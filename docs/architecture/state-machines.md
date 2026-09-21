@@ -113,9 +113,11 @@ Reserved
 - a release command against an already released reservation is a no-op;
 - a reserve retry for the same logical reservation must never reserve stock twice;
 - `Reserved -> Consumed` and `Reserved -> Released` are mutually exclusive and require database concurrency protection;
-- expiration is a business transition driven by a persisted deadline, not an in-memory timer.
+- expiration is a business transition driven by a persisted deadline, not an in-memory timer;
+- `Consumed` remains historical truth and is never transitioned back to `Reserved` or `Released`;
+- if a later cross-service failure requires stock restoration after consumption, Inventory performs a separate idempotent restock adjustment linked to the original reservation/order.
 
-The exact command/event names for consuming inventory will be fixed in the integration contract catalog.
+The exact command/event names for consuming and restoring inventory will be fixed in the integration contract catalog.
 
 ## Payment state machine
 
@@ -221,6 +223,7 @@ Saga owns orchestration progress. It does not own Order, Inventory, or Payment b
 - `WaitingForOrderConfirmation`
 - `CompensatingPayment`
 - `CompensatingInventory`
+- `CompensatingInventoryRestock`
 - `WaitingForOrderCancellation`
 - `Completed`
 - `CompletedWithBusinessFailure`
@@ -275,6 +278,18 @@ WaitingForInventoryCommit
   -> CompletedWithBusinessFailure
 ```
 
+Order confirmation becomes permanently impossible after payment was captured and inventory was consumed:
+
+```text
+WaitingForOrderConfirmation
+  -> CompensatingPayment
+  -> CompensatingInventoryRestock
+  -> WaitingForOrderCancellation
+  -> CompletedWithBusinessFailure
+```
+
+The restock is a new inventory adjustment. The original reservation remains `Consumed`; history is not rewritten to pretend the stock was never consumed.
+
 ### Technical failures
 
 Technical failures such as Kafka unavailability, process crash, transient database failure, or provider timeout normally do **not** create a new business Saga state.
@@ -300,7 +315,10 @@ If automation can no longer determine a safe action before the configured operat
 - a process restart resumes from persisted state;
 - compensation is idempotent;
 - payment is never captured again merely because Order confirmation is temporarily unavailable;
-- once payment is captured, a permanent inability to finish checkout requires an explicit refund path rather than forgetting the charge.
+- a transient Order confirmation failure stays in `WaitingForOrderConfirmation` and is retried;
+- once inventory has been consumed, compensation restores stock through a separate idempotent restock adjustment rather than reversing the reservation state;
+- once payment is captured, a permanent inability to finish checkout requires an explicit refund path rather than forgetting the charge;
+- Order cancellation after a post-capture failure happens only after required payment and inventory compensation reach a safe point.
 
 ## Transition ownership
 
