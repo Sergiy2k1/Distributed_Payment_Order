@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="src/Services/Order/PayFlow.Order.Application/PayFlow.Order.Application.csproj" />
   <Project Path="src/Services/Order/PayFlow.Order.Domain/PayFlow.Order.Domain.csproj" />
 </Solution>
