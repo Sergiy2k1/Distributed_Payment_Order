@@ -4,6 +4,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="../PayFlow.Order.Application/PayFlow.Order.Application.csproj" />
     <ProjectReference Include="../PayFlow.Order.Infrastructure/PayFlow.Order.Infrastructure.csproj" />
   </ItemGroup>
