@@ -10,12 +10,82 @@ public sealed class OrderTests
     {
         var orderId = OrderId.New();
         var customerId = CustomerId.New();
+        var item = CreateItem("SKU-001", 1, 10m, "USD");
 
-        var order = OrderAggregate.Create(orderId, customerId);
+        var order = OrderAggregate.Create(orderId, customerId, [item]);
 
         Assert.Equal(orderId, order.Id);
         Assert.Equal(customerId, order.CustomerId);
         Assert.Equal(OrderStatus.Pending, order.Status);
+        Assert.Single(order.Items);
+        Assert.Same(item, order.Items[0]);
+        Assert.Equal(Money.From(10m, "USD"), order.Total);
+    }
+
+    [Fact]
+    public void CreateRejectsEmptyItems()
+    {
+        var exception = Assert.Throws<ArgumentException>(
+            () => OrderAggregate.Create(
+                OrderId.New(),
+                CustomerId.New(),
+                []));
+
+        Assert.Equal("items", exception.ParamName);
+    }
+
+    [Fact]
+    public void CreateRejectsMixedCurrencies()
+    {
+        var items = new[]
+        {
+            CreateItem("SKU-001", 1, 10m, "USD"),
+            CreateItem("SKU-002", 1, 20m, "EUR")
+        };
+
+        var exception = Assert.Throws<ArgumentException>(
+            () => OrderAggregate.Create(
+                OrderId.New(),
+                CustomerId.New(),
+                items));
+
+        Assert.Equal("items", exception.ParamName);
+    }
+
+    [Fact]
+    public void CreateCalculatesTotalAcrossItems()
+    {
+        var items = new[]
+        {
+            CreateItem("SKU-001", 2, 10m, "USD"),
+            CreateItem("SKU-002", 3, 5m, "USD")
+        };
+
+        var order = OrderAggregate.Create(
+            OrderId.New(),
+            CustomerId.New(),
+            items);
+
+        Assert.Equal(Money.From(35m, "USD"), order.Total);
+    }
+
+    [Fact]
+    public void CreateCopiesInputCollection()
+    {
+        var items = new List<OrderItem>
+        {
+            CreateItem("SKU-001", 1, 10m, "USD")
+        };
+
+        var order = OrderAggregate.Create(
+            OrderId.New(),
+            CustomerId.New(),
+            items);
+
+        items.Add(CreateItem("SKU-002", 1, 20m, "USD"));
+
+        Assert.Single(order.Items);
+        Assert.Equal(Money.From(10m, "USD"), order.Total);
     }
 
     [Fact]
@@ -119,7 +189,10 @@ public sealed class OrderTests
 
     private static OrderAggregate CreateOrder()
     {
-        return OrderAggregate.Create(OrderId.New(), CustomerId.New());
+        return OrderAggregate.Create(
+            OrderId.New(),
+            CustomerId.New(),
+            [CreateItem("SKU-001", 1, 10m, "USD")]);
     }
 
     private static OrderAggregate CreateConfirmedOrder()
@@ -128,5 +201,17 @@ public sealed class OrderTests
         order.StartProcessing();
         order.Confirm();
         return order;
+    }
+
+    private static OrderItem CreateItem(
+        string sku,
+        int quantity,
+        decimal unitPrice,
+        string currency)
+    {
+        return OrderItem.Create(
+            Sku.From(sku),
+            quantity,
+            Money.From(unitPrice, currency));
     }
 }
