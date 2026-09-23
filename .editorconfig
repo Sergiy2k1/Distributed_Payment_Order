@@ -16,3 +16,8 @@ indent_size = 2
 
 [*.md]
 trim_trailing_whitespace = false
+
+[**/Persistence/Migrations/*.cs]
+# EF Core generates migration metadata/snapshots; sealing these generated types
+# is not a domain or runtime design concern and can be overwritten by tooling.
+dotnet_diagnostic.CA1852.severity = none
