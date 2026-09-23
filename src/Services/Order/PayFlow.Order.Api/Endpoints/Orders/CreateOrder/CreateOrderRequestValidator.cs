@@ -105,7 +105,7 @@ public static class CreateOrderRequestValidator
     }
 
     private static void AddError(
-        IDictionary<string, List<string>> errors,
+        Dictionary<string, List<string>> errors,
         string key,
         string message)
     {
