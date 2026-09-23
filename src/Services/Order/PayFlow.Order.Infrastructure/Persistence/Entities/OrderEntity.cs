@@ -17,4 +17,6 @@ public sealed class OrderEntity
     public DateTimeOffset UpdatedAtUtc { get; set; }
 
     public long Version { get; set; }
+
+    public List<OrderItemEntity> Items { get; set; } = [];
 }

@@ -12,6 +12,8 @@ public sealed class OrderDbContext : DbContext
 
     public DbSet<OrderEntity> Orders => Set<OrderEntity>();
 
+    public DbSet<OrderItemEntity> OrderItems => Set<OrderItemEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(OrderDbContext).Assembly);
