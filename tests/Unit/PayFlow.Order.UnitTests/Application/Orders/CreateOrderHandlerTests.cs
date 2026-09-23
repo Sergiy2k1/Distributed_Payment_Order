@@ -26,7 +26,9 @@ public sealed class CreateOrderHandlerTests
                 new CreateOrderItem("SKU-002", 3, 5m, "usd")
             ]);
 
-        var result = await handler.HandleAsync(command);
+        var result = await handler.HandleAsync(
+            command,
+            TestContext.Current.CancellationToken);
 
         var order = Assert.IsType<OrderAggregate>(repository.AddedOrder);
         Assert.Equal(result.OrderId, order.Id.Value);
@@ -71,7 +73,9 @@ public sealed class CreateOrderHandlerTests
             [new CreateOrderItem("SKU-001", 1, 10m, "USD")]);
 
         var exception = await Assert.ThrowsAsync<ArgumentException>(
-            () => handler.HandleAsync(command));
+            () => handler.HandleAsync(
+                command,
+                TestContext.Current.CancellationToken));
 
         Assert.Equal("value", exception.ParamName);
     }
@@ -87,7 +91,9 @@ public sealed class CreateOrderHandlerTests
             []);
 
         var exception = await Assert.ThrowsAsync<ArgumentException>(
-            () => handler.HandleAsync(command));
+            () => handler.HandleAsync(
+                command,
+                TestContext.Current.CancellationToken));
 
         Assert.Equal("items", exception.ParamName);
     }
