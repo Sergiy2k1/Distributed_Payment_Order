@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using OrderAggregate = PayFlow.Order.Domain.Orders.Order;
+using PayFlow.Order.Infrastructure.Persistence.Entities;
 
 namespace PayFlow.Order.Infrastructure.Persistence;
 
@@ -10,5 +10,10 @@ public sealed class OrderDbContext : DbContext
     {
     }
 
-    public DbSet<OrderAggregate> Orders => Set<OrderAggregate>();
+    public DbSet<OrderEntity> Orders => Set<OrderEntity>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(OrderDbContext).Assembly);
+    }
 }
