@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PayFlow.Order.Api.Endpoints.Orders.CreateOrder;
 using PayFlow.Order.Application.Abstractions;
 using PayFlow.Order.Application.Orders.CreateOrder;
 using PayFlow.Order.Infrastructure.Persistence;
@@ -25,5 +26,7 @@ builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddScoped<CreateOrderHandler>();
 
 var app = builder.Build();
+
+app.MapCreateOrderEndpoint();
 
 app.Run();
