@@ -7,13 +7,16 @@ namespace PayFlow.Order.Application.Orders.CreateOrder;
 public sealed class CreateOrderHandler
 {
     private readonly IOrderRepository _orderRepository;
+    private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
     public CreateOrderHandler(
         IOrderRepository orderRepository,
+        IUnitOfWork unitOfWork,
         IClock clock)
     {
         _orderRepository = orderRepository;
+        _unitOfWork = unitOfWork;
         _clock = clock;
     }
 
@@ -44,6 +47,10 @@ public sealed class CreateOrderHandler
 
         await _orderRepository
             .AddAsync(order, cancellationToken)
+            .ConfigureAwait(false);
+
+        await _unitOfWork
+            .SaveChangesAsync(cancellationToken)
             .ConfigureAwait(false);
 
         return new CreateOrderResult(

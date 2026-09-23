@@ -12,11 +12,13 @@ public sealed class CreateOrderHandlerTests
         new(2026, 9, 23, 15, 0, 0, TimeSpan.Zero);
 
     [Fact]
-    public async Task HandleCreatesAndPersistsPendingOrder()
+    public async Task HandleCreatesPersistsAndCommitsPendingOrder()
     {
         var repository = new FakeOrderRepository();
+        var unitOfWork = new FakeUnitOfWork();
         var handler = new CreateOrderHandler(
             repository,
+            unitOfWork,
             new FakeClock(FixedUtcNow));
         var customerId = Guid.NewGuid();
         var command = new CreateOrderCommand(
@@ -39,16 +41,19 @@ public sealed class CreateOrderHandlerTests
         Assert.Equal(35m, result.TotalAmount);
         Assert.Equal("USD", result.Currency);
         Assert.Equal(OrderStatus.Pending, result.Status);
+        Assert.Equal(1, unitOfWork.SaveChangesCallCount);
         Assert.IsType<OrderCreatedDomainEvent>(
             Assert.Single(order.DomainEvents));
     }
 
     [Fact]
-    public async Task HandlePassesCancellationTokenToRepository()
+    public async Task HandlePassesCancellationTokenToPersistenceBoundary()
     {
         var repository = new FakeOrderRepository();
+        var unitOfWork = new FakeUnitOfWork();
         var handler = new CreateOrderHandler(
             repository,
+            unitOfWork,
             new FakeClock(FixedUtcNow));
         using var cancellationTokenSource = new CancellationTokenSource();
         var command = CreateValidCommand();
@@ -60,13 +65,18 @@ public sealed class CreateOrderHandlerTests
         Assert.Equal(
             cancellationTokenSource.Token,
             repository.ReceivedCancellationToken);
+        Assert.Equal(
+            cancellationTokenSource.Token,
+            unitOfWork.ReceivedCancellationToken);
     }
 
     [Fact]
     public async Task HandleRejectsEmptyCustomerId()
     {
+        var unitOfWork = new FakeUnitOfWork();
         var handler = new CreateOrderHandler(
             new FakeOrderRepository(),
+            unitOfWork,
             new FakeClock(FixedUtcNow));
         var command = new CreateOrderCommand(
             Guid.Empty,
@@ -78,13 +88,16 @@ public sealed class CreateOrderHandlerTests
                 TestContext.Current.CancellationToken));
 
         Assert.Equal("value", exception.ParamName);
+        Assert.Equal(0, unitOfWork.SaveChangesCallCount);
     }
 
     [Fact]
     public async Task HandleRejectsEmptyItems()
     {
+        var unitOfWork = new FakeUnitOfWork();
         var handler = new CreateOrderHandler(
             new FakeOrderRepository(),
+            unitOfWork,
             new FakeClock(FixedUtcNow));
         var command = new CreateOrderCommand(
             Guid.NewGuid(),
@@ -96,6 +109,7 @@ public sealed class CreateOrderHandlerTests
                 TestContext.Current.CancellationToken));
 
         Assert.Equal("items", exception.ParamName);
+        Assert.Equal(0, unitOfWork.SaveChangesCallCount);
     }
 
     private static CreateOrderCommand CreateValidCommand()
@@ -121,6 +135,21 @@ public sealed class CreateOrderHandlerTests
             CancellationToken cancellationToken = default)
         {
             AddedOrder = order;
+            ReceivedCancellationToken = cancellationToken;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeUnitOfWork : IUnitOfWork
+    {
+        public int SaveChangesCallCount { get; private set; }
+
+        public CancellationToken ReceivedCancellationToken { get; private set; }
+
+        public Task SaveChangesAsync(
+            CancellationToken cancellationToken = default)
+        {
+            SaveChangesCallCount++;
             ReceivedCancellationToken = cancellationToken;
             return Task.CompletedTask;
         }
