@@ -1,16 +1,19 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
+using PayFlow.Order.Infrastructure.Persistence;
 
 #nullable disable
 
 namespace PayFlow.Order.Infrastructure.Persistence.Migrations;
 
 [DbContext(typeof(OrderDbContext))]
-partial class OrderDbContextModelSnapshot : ModelSnapshot
+[Migration("20260923184500_AddOrderIdempotency")]
+partial class AddOrderIdempotency
 {
-    protected override void BuildModel(ModelBuilder modelBuilder)
+    protected override void BuildTargetModel(ModelBuilder modelBuilder)
     {
 #pragma warning disable 612, 618
         modelBuilder
