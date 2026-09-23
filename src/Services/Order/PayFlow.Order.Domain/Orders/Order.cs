@@ -1,9 +1,12 @@
 using System.Collections.ObjectModel;
+using PayFlow.Order.Domain.Orders.Events;
 
 namespace PayFlow.Order.Domain.Orders;
 
 public sealed class Order
 {
+    private readonly List<IDomainEvent> _domainEvents = [];
+
     private Order(
         OrderId id,
         CustomerId customerId,
@@ -36,6 +39,9 @@ public sealed class Order
     public DateTimeOffset UpdatedAtUtc { get; private set; }
 
     public long Version { get; private set; }
+
+    public IReadOnlyCollection<IDomainEvent> DomainEvents =>
+        _domainEvents.AsReadOnly();
 
     public static Order Create(
         OrderId id,
@@ -85,12 +91,24 @@ public sealed class Order
             total = total.Add(item.LineTotal);
         }
 
-        return new Order(
+        var orderItems = Array.AsReadOnly(itemArray);
+
+        var order = new Order(
             id,
             customerId,
-            Array.AsReadOnly(itemArray),
+            orderItems,
             total,
             createdAtUtc);
+
+        order.RaiseDomainEvent(
+            new OrderCreatedDomainEvent(
+                id,
+                customerId,
+                orderItems,
+                total,
+                createdAtUtc));
+
+        return order;
     }
 
     public void StartProcessing(DateTimeOffset occurredAtUtc)
@@ -132,6 +150,11 @@ public sealed class Order
         TransitionTo(OrderStatus.Fulfilled, occurredAtUtc, OrderStatus.Confirmed);
     }
 
+    public void ClearDomainEvents()
+    {
+        _domainEvents.Clear();
+    }
+
     private void TransitionTo(
         OrderStatus target,
         DateTimeOffset occurredAtUtc,
@@ -158,9 +181,24 @@ public sealed class Order
                 "Order transition timestamp cannot be earlier than the current update timestamp.");
         }
 
+        var previousStatus = Status;
+
         Status = target;
         UpdatedAtUtc = occurredAtUtc;
         Version++;
+
+        RaiseDomainEvent(
+            new OrderStatusChangedDomainEvent(
+                Id,
+                previousStatus,
+                target,
+                Version,
+                occurredAtUtc));
+    }
+
+    private void RaiseDomainEvent(IDomainEvent domainEvent)
+    {
+        _domainEvents.Add(domainEvent);
     }
 
     private static void EnsureUtc(DateTimeOffset value, string paramName)

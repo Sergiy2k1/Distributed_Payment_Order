@@ -1,4 +1,5 @@
 using PayFlow.Order.Domain.Orders;
+using PayFlow.Order.Domain.Orders.Events;
 using OrderAggregate = PayFlow.Order.Domain.Orders.Order;
 
 namespace PayFlow.Order.UnitTests.Domain.Orders;
@@ -30,6 +31,30 @@ public sealed class OrderTests
         Assert.Equal(InitialTimestamp, order.CreatedAtUtc);
         Assert.Equal(InitialTimestamp, order.UpdatedAtUtc);
         Assert.Equal(0, order.Version);
+    }
+
+    [Fact]
+    public void CreateRaisesOrderCreatedDomainEvent()
+    {
+        var orderId = OrderId.New();
+        var customerId = CustomerId.New();
+        var item = CreateItem("SKU-001", 2, 10m, "USD");
+
+        var order = OrderAggregate.Create(
+            orderId,
+            customerId,
+            [item],
+            InitialTimestamp);
+
+        var domainEvent = Assert.IsType<OrderCreatedDomainEvent>(
+            Assert.Single(order.DomainEvents));
+
+        Assert.Equal(orderId, domainEvent.OrderId);
+        Assert.Equal(customerId, domainEvent.CustomerId);
+        Assert.Single(domainEvent.Items);
+        Assert.Same(item, domainEvent.Items[0]);
+        Assert.Equal(Money.From(20m, "USD"), domainEvent.Total);
+        Assert.Equal(InitialTimestamp, domainEvent.OccurredAtUtc);
     }
 
     [Fact]
@@ -193,9 +218,29 @@ public sealed class OrderTests
     }
 
     [Fact]
+    public void TransitionRaisesStatusChangedDomainEvent()
+    {
+        var order = CreateOrder();
+        order.ClearDomainEvents();
+        var occurredAtUtc = InitialTimestamp.AddMinutes(1);
+
+        order.StartProcessing(occurredAtUtc);
+
+        var domainEvent = Assert.IsType<OrderStatusChangedDomainEvent>(
+            Assert.Single(order.DomainEvents));
+
+        Assert.Equal(order.Id, domainEvent.OrderId);
+        Assert.Equal(OrderStatus.Pending, domainEvent.PreviousStatus);
+        Assert.Equal(OrderStatus.Processing, domainEvent.CurrentStatus);
+        Assert.Equal(1, domainEvent.Version);
+        Assert.Equal(occurredAtUtc, domainEvent.OccurredAtUtc);
+    }
+
+    [Fact]
     public void RepeatingSameTransitionIsIdempotent()
     {
         var order = CreateOrder();
+        order.ClearDomainEvents();
         var firstTimestamp = InitialTimestamp.AddMinutes(1);
 
         order.StartProcessing(firstTimestamp);
@@ -204,6 +249,29 @@ public sealed class OrderTests
         Assert.Equal(OrderStatus.Processing, order.Status);
         Assert.Equal(firstTimestamp, order.UpdatedAtUtc);
         Assert.Equal(1, order.Version);
+        Assert.Single(order.DomainEvents);
+    }
+
+    [Fact]
+    public void ClearDomainEventsRemovesPendingEvents()
+    {
+        var order = CreateOrder();
+
+        order.ClearDomainEvents();
+
+        Assert.Empty(order.DomainEvents);
+    }
+
+    [Fact]
+    public void FailedTransitionDoesNotRaiseDomainEvent()
+    {
+        var order = CreateOrder();
+        order.ClearDomainEvents();
+
+        Assert.Throws<InvalidOperationException>(
+            () => order.Confirm(InitialTimestamp.AddMinutes(1)));
+
+        Assert.Empty(order.DomainEvents);
     }
 
     [Fact]
