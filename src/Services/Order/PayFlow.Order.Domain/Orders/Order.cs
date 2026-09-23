@@ -8,13 +8,17 @@ public sealed class Order
         OrderId id,
         CustomerId customerId,
         ReadOnlyCollection<OrderItem> items,
-        Money total)
+        Money total,
+        DateTimeOffset createdAtUtc)
     {
         Id = id;
         CustomerId = customerId;
         Items = items;
         Total = total;
         Status = OrderStatus.Pending;
+        CreatedAtUtc = createdAtUtc;
+        UpdatedAtUtc = createdAtUtc;
+        Version = 0;
     }
 
     public OrderId Id { get; }
@@ -27,10 +31,17 @@ public sealed class Order
 
     public OrderStatus Status { get; private set; }
 
+    public DateTimeOffset CreatedAtUtc { get; }
+
+    public DateTimeOffset UpdatedAtUtc { get; private set; }
+
+    public long Version { get; private set; }
+
     public static Order Create(
         OrderId id,
         CustomerId customerId,
-        IEnumerable<OrderItem> items)
+        IEnumerable<OrderItem> items,
+        DateTimeOffset createdAtUtc)
     {
         if (id.Value == Guid.Empty)
         {
@@ -42,6 +53,7 @@ public sealed class Order
             throw new ArgumentException("Customer ID cannot be empty.", nameof(customerId));
         }
 
+        EnsureUtc(createdAtUtc, nameof(createdAtUtc));
         ArgumentNullException.ThrowIfNull(items);
 
         var itemArray = items.ToArray();
@@ -77,45 +89,53 @@ public sealed class Order
             id,
             customerId,
             Array.AsReadOnly(itemArray),
-            total);
+            total,
+            createdAtUtc);
     }
 
-    public void StartProcessing()
+    public void StartProcessing(DateTimeOffset occurredAtUtc)
     {
-        TransitionTo(OrderStatus.Processing, OrderStatus.Pending);
+        TransitionTo(OrderStatus.Processing, occurredAtUtc, OrderStatus.Pending);
     }
 
-    public void BeginCancellation()
+    public void BeginCancellation(DateTimeOffset occurredAtUtc)
     {
-        TransitionTo(OrderStatus.Cancelling, OrderStatus.Pending, OrderStatus.Processing);
+        TransitionTo(
+            OrderStatus.Cancelling,
+            occurredAtUtc,
+            OrderStatus.Pending,
+            OrderStatus.Processing);
     }
 
-    public void Confirm()
+    public void Confirm(DateTimeOffset occurredAtUtc)
     {
-        TransitionTo(OrderStatus.Confirmed, OrderStatus.Processing);
+        TransitionTo(OrderStatus.Confirmed, occurredAtUtc, OrderStatus.Processing);
     }
 
-    public void CompleteCancellation()
+    public void CompleteCancellation(DateTimeOffset occurredAtUtc)
     {
-        TransitionTo(OrderStatus.Cancelled, OrderStatus.Cancelling);
+        TransitionTo(OrderStatus.Cancelled, occurredAtUtc, OrderStatus.Cancelling);
     }
 
-    public void RequestRefund()
+    public void RequestRefund(DateTimeOffset occurredAtUtc)
     {
-        TransitionTo(OrderStatus.RefundRequested, OrderStatus.Confirmed);
+        TransitionTo(OrderStatus.RefundRequested, occurredAtUtc, OrderStatus.Confirmed);
     }
 
-    public void CompleteRefund()
+    public void CompleteRefund(DateTimeOffset occurredAtUtc)
     {
-        TransitionTo(OrderStatus.Refunded, OrderStatus.RefundRequested);
+        TransitionTo(OrderStatus.Refunded, occurredAtUtc, OrderStatus.RefundRequested);
     }
 
-    public void Fulfill()
+    public void Fulfill(DateTimeOffset occurredAtUtc)
     {
-        TransitionTo(OrderStatus.Fulfilled, OrderStatus.Confirmed);
+        TransitionTo(OrderStatus.Fulfilled, occurredAtUtc, OrderStatus.Confirmed);
     }
 
-    private void TransitionTo(OrderStatus target, params OrderStatus[] allowedSources)
+    private void TransitionTo(
+        OrderStatus target,
+        DateTimeOffset occurredAtUtc,
+        params OrderStatus[] allowedSources)
     {
         if (Status == target)
         {
@@ -128,6 +148,28 @@ public sealed class Order
                 $"Order cannot transition from {Status} to {target}.");
         }
 
+        EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+
+        if (occurredAtUtc < UpdatedAtUtc)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(occurredAtUtc),
+                occurredAtUtc,
+                "Order transition timestamp cannot be earlier than the current update timestamp.");
+        }
+
         Status = target;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
+    private static void EnsureUtc(DateTimeOffset value, string paramName)
+    {
+        if (value.Offset != TimeSpan.Zero)
+        {
+            throw new ArgumentException(
+                "Timestamp must use UTC offset.",
+                paramName);
+        }
     }
 }
