@@ -39,13 +39,9 @@ public sealed class OrderRepositoryTests(PostgreSqlFixture fixture)
             var repository = new OrderRepository(writeDbContext);
             var unitOfWork = new EfUnitOfWork(writeDbContext);
 
-            await repository
-                .AddAsync(order, cancellationToken)
-                .ConfigureAwait(false);
+            await repository.AddAsync(order, cancellationToken);
 
-            await unitOfWork
-                .SaveChangesAsync(cancellationToken)
-                .ConfigureAwait(false);
+            await unitOfWork.SaveChangesAsync(cancellationToken);
         }
 
         await using var readDbContext = fixture.CreateDbContext();
@@ -55,8 +51,7 @@ public sealed class OrderRepositoryTests(PostgreSqlFixture fixture)
             .Include(entity => entity.Items)
             .SingleAsync(
                 entity => entity.Id == orderId.Value,
-                cancellationToken)
-            .ConfigureAwait(false);
+                cancellationToken);
 
         Assert.Equal(orderId.Value, persistedOrder.Id);
         Assert.Equal(customerId.Value, persistedOrder.CustomerId);
