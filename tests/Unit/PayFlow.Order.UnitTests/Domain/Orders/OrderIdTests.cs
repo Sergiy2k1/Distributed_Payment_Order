@@ -5,7 +5,7 @@ namespace PayFlow.Order.UnitTests.Domain.Orders;
 public sealed class OrderIdTests
 {
     [Fact]
-    public void New_ShouldCreateNonEmptyIdentifier()
+    public void NewCreatesNonEmptyIdentifier()
     {
         var orderId = OrderId.New();
 
@@ -13,7 +13,7 @@ public sealed class OrderIdTests
     }
 
     [Fact]
-    public void From_ShouldPreserveProvidedValue()
+    public void FromPreservesProvidedValue()
     {
         var value = Guid.NewGuid();
 
@@ -23,7 +23,7 @@ public sealed class OrderIdTests
     }
 
     [Fact]
-    public void From_ShouldRejectEmptyGuid()
+    public void FromRejectsEmptyGuid()
     {
         var exception = Assert.Throws<ArgumentException>(() => OrderId.From(Guid.Empty));
 
@@ -31,7 +31,7 @@ public sealed class OrderIdTests
     }
 
     [Fact]
-    public void IdentifiersCreatedFromSameGuid_ShouldBeEqual()
+    public void IdentifiersCreatedFromSameGuidAreEqual()
     {
         var value = Guid.NewGuid();
 
