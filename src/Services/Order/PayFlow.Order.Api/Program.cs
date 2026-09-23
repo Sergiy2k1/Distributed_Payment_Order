@@ -8,9 +8,13 @@ using PayFlow.Order.Infrastructure.Time;
 var builder = WebApplication.CreateBuilder(args);
 
 var orderDatabaseConnectionString =
-    builder.Configuration.GetConnectionString("OrderDatabase")
-    ?? throw new InvalidOperationException(
+    builder.Configuration.GetConnectionString("OrderDatabase");
+
+if (string.IsNullOrWhiteSpace(orderDatabaseConnectionString))
+{
+    throw new InvalidOperationException(
         "Connection string 'OrderDatabase' is not configured.");
+}
 
 builder.Services.AddDbContext<OrderDbContext>(
     options => options.UseNpgsql(orderDatabaseConnectionString));
