@@ -14,6 +14,15 @@ public static class CreateOrderEndpoint
                     CreateOrderHandler handler,
                     CancellationToken cancellationToken) =>
                 {
+                    var validationErrors =
+                        CreateOrderRequestValidator.Validate(request);
+
+                    if (validationErrors.Count > 0)
+                    {
+                        return Results.ValidationProblem(
+                            validationErrors);
+                    }
+
                     var command = new CreateOrderCommand(
                         request.CustomerId,
                         request.Items
@@ -39,7 +48,10 @@ public static class CreateOrderEndpoint
                         $"/orders/{result.OrderId}",
                         response);
                 })
-            .WithName("CreateOrder");
+            .WithName("CreateOrder")
+            .Produces<CreateOrderResponse>(
+                StatusCodes.Status201Created)
+            .ProducesValidationProblem();
 
         return endpoints;
     }
