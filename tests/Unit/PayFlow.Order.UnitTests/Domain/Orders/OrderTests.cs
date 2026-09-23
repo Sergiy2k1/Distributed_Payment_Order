@@ -1,4 +1,5 @@
 using PayFlow.Order.Domain.Orders;
+using OrderAggregate = PayFlow.Order.Domain.Orders.Order;
 
 namespace PayFlow.Order.UnitTests.Domain.Orders;
 
@@ -10,7 +11,7 @@ public sealed class OrderTests
         var orderId = OrderId.New();
         var customerId = CustomerId.New();
 
-        var order = Order.Create(orderId, customerId);
+        var order = OrderAggregate.Create(orderId, customerId);
 
         Assert.Equal(orderId, order.Id);
         Assert.Equal(customerId, order.CustomerId);
@@ -116,12 +117,12 @@ public sealed class OrderTests
         Assert.Equal(OrderStatus.Refunded, order.Status);
     }
 
-    private static Order CreateOrder()
+    private static OrderAggregate CreateOrder()
     {
-        return Order.Create(OrderId.New(), CustomerId.New());
+        return OrderAggregate.Create(OrderId.New(), CustomerId.New());
     }
 
-    private static Order CreateConfirmedOrder()
+    private static OrderAggregate CreateConfirmedOrder()
     {
         var order = CreateOrder();
         order.StartProcessing();
