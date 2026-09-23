@@ -1,0 +1,43 @@
+using PayFlow.Order.Infrastructure.Persistence.Entities;
+using OrderAggregate = PayFlow.Order.Domain.Orders.Order;
+
+namespace PayFlow.Order.Infrastructure.Persistence.Mapping;
+
+internal static class OrderEntityMapper
+{
+    public static OrderEntity ToEntity(OrderAggregate order)
+    {
+        ArgumentNullException.ThrowIfNull(order);
+
+        var entity = new OrderEntity
+        {
+            Id = order.Id.Value,
+            CustomerId = order.CustomerId.Value,
+            Status = order.Status.ToString(),
+            TotalAmount = order.Total.Amount,
+            Currency = order.Total.Currency,
+            CreatedAtUtc = order.CreatedAtUtc,
+            UpdatedAtUtc = order.UpdatedAtUtc,
+            Version = order.Version
+        };
+
+        for (var position = 0; position < order.Items.Count; position++)
+        {
+            var item = order.Items[position];
+
+            entity.Items.Add(
+                new OrderItemEntity
+                {
+                    OrderId = order.Id.Value,
+                    Position = position,
+                    Sku = item.Sku.Value,
+                    Quantity = item.Quantity,
+                    UnitPriceAmount = item.UnitPrice.Amount,
+                    Currency = item.UnitPrice.Currency,
+                    Order = entity
+                });
+        }
+
+        return entity;
+    }
+}
