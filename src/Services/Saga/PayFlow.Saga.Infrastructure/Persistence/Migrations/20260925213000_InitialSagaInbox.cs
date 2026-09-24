@@ -10,6 +10,13 @@ namespace PayFlow.Saga.Infrastructure.Persistence.Migrations;
 [Migration("20260925213000_InitialSagaInbox")]
 public partial class InitialSagaInbox : Migration
 {
+    private static readonly string[] SourcePositionIndexColumns =
+    [
+        "source_topic",
+        "source_partition",
+        "source_offset"
+    ];
+
     protected override void Up(
         MigrationBuilder migrationBuilder)
     {
@@ -91,12 +98,7 @@ public partial class InitialSagaInbox : Migration
         migrationBuilder.CreateIndex(
             name: "IX_inbox_messages_source_position",
             table: "inbox_messages",
-            columns: new[]
-            {
-                "source_topic",
-                "source_partition",
-                "source_offset"
-            });
+            columns: SourcePositionIndexColumns);
     }
 
     protected override void Down(
