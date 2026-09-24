@@ -187,6 +187,82 @@ public sealed class CreateOrderHandlerTests
     }
 
     [Fact]
+    public async Task HandleRecoversSamePayloadAfterConcurrentWinner()
+    {
+        var command = CreateValidCommand();
+        var winnerResult = new CreateOrderResult(
+            Guid.NewGuid(),
+            OrderStatus.Pending,
+            10m,
+            "USD");
+        var idempotencyRepository =
+            new FakeCreateOrderIdempotencyRepository
+            {
+                ExistingRecordAfterFirstLookup =
+                    new CreateOrderIdempotencyRecord(
+                        "create-order-race",
+                        CreateOrderRequestHasher.ComputeHash(command),
+                        winnerResult,
+                        FixedUtcNow)
+            };
+        var unitOfWork = new FakeUnitOfWork
+        {
+            ThrowIdempotencyConcurrency = true
+        };
+        var handler = CreateHandler(
+            new FakeOrderRepository(),
+            idempotencyRepository,
+            unitOfWork);
+
+        var result = await handler.HandleAsync(
+            command,
+            "create-order-race",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(winnerResult, result);
+        Assert.Equal(2, idempotencyRepository.GetCallCount);
+        Assert.Equal(1, unitOfWork.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task HandleThrowsConflictWhenConcurrentWinnerHasDifferentPayload()
+    {
+        var command = CreateValidCommand();
+        var idempotencyRepository =
+            new FakeCreateOrderIdempotencyRepository
+            {
+                ExistingRecordAfterFirstLookup =
+                    new CreateOrderIdempotencyRecord(
+                        "create-order-race",
+                        new string('B', 64),
+                        new CreateOrderResult(
+                            Guid.NewGuid(),
+                            OrderStatus.Pending,
+                            20m,
+                            "USD"),
+                        FixedUtcNow)
+            };
+        var unitOfWork = new FakeUnitOfWork
+        {
+            ThrowIdempotencyConcurrency = true
+        };
+        var handler = CreateHandler(
+            new FakeOrderRepository(),
+            idempotencyRepository,
+            unitOfWork);
+
+        await Assert.ThrowsAsync<
+            CreateOrderIdempotencyConflictException>(
+            () => handler.HandleAsync(
+                command,
+                "create-order-race",
+                TestContext.Current.CancellationToken));
+
+        Assert.Equal(2, idempotencyRepository.GetCallCount);
+        Assert.Equal(1, unitOfWork.SaveChangesCallCount);
+    }
+
+    [Fact]
     public async Task HandleRejectsEmptyCustomerId()
     {
         var unitOfWork = new FakeUnitOfWork();
@@ -273,7 +349,15 @@ public sealed class CreateOrderHandlerTests
     {
         public CreateOrderIdempotencyRecord? ExistingRecord { get; init; }
 
+        public CreateOrderIdempotencyRecord? ExistingRecordAfterFirstLookup
+        {
+            get;
+            init;
+        }
+
         public CreateOrderIdempotencyRecord? AddedRecord { get; private set; }
+
+        public int GetCallCount { get; private set; }
 
         public CancellationToken ReceivedGetCancellationToken { get; private set; }
 
@@ -284,7 +368,13 @@ public sealed class CreateOrderHandlerTests
             CancellationToken cancellationToken = default)
         {
             ReceivedGetCancellationToken = cancellationToken;
-            return Task.FromResult(ExistingRecord);
+            GetCallCount++;
+
+            var result = GetCallCount == 1
+                ? ExistingRecord
+                : ExistingRecordAfterFirstLookup ?? ExistingRecord;
+
+            return Task.FromResult(result);
         }
 
         public Task AddAsync(
@@ -301,6 +391,8 @@ public sealed class CreateOrderHandlerTests
     {
         public int SaveChangesCallCount { get; private set; }
 
+        public bool ThrowIdempotencyConcurrency { get; init; }
+
         public CancellationToken ReceivedCancellationToken { get; private set; }
 
         public Task SaveChangesAsync(
@@ -308,6 +400,13 @@ public sealed class CreateOrderHandlerTests
         {
             SaveChangesCallCount++;
             ReceivedCancellationToken = cancellationToken;
+
+            if (ThrowIdempotencyConcurrency)
+            {
+                throw new CreateOrderIdempotencyConcurrencyException(
+                    new InvalidOperationException("Simulated race."));
+            }
+
             return Task.CompletedTask;
         }
     }

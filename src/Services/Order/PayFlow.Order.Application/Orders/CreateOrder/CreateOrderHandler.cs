@@ -58,15 +58,9 @@ public sealed class CreateOrderHandler
 
             if (existing is not null)
             {
-                if (!string.Equals(
-                        existing.RequestHash,
-                        requestHash,
-                        StringComparison.Ordinal))
-                {
-                    throw new CreateOrderIdempotencyConflictException();
-                }
-
-                return existing.Result;
+                return ResolveExisting(
+                    existing,
+                    requestHash);
             }
         }
 
@@ -115,11 +109,48 @@ public sealed class CreateOrderHandler
                 .ConfigureAwait(false);
         }
 
-        await _unitOfWork
-            .SaveChangesAsync(cancellationToken)
-            .ConfigureAwait(false);
+        try
+        {
+            await _unitOfWork
+                .SaveChangesAsync(cancellationToken)
+                .ConfigureAwait(false);
+        }
+        catch (CreateOrderIdempotencyConcurrencyException)
+            when (idempotencyKey is not null)
+        {
+            var winner = await _idempotencyRepository
+                .GetByKeyAsync(
+                    idempotencyKey,
+                    cancellationToken)
+                .ConfigureAwait(false);
+
+            if (winner is null)
+            {
+                throw new InvalidOperationException(
+                    "The winning idempotency record could not be read after a concurrency conflict.");
+            }
+
+            return ResolveExisting(
+                winner,
+                requestHash!);
+        }
 
         return result;
+    }
+
+    private static CreateOrderResult ResolveExisting(
+        CreateOrderIdempotencyRecord existing,
+        string requestHash)
+    {
+        if (!string.Equals(
+                existing.RequestHash,
+                requestHash,
+                StringComparison.Ordinal))
+        {
+            throw new CreateOrderIdempotencyConflictException();
+        }
+
+        return existing.Result;
     }
 
     private static void ValidateIdempotencyKey(
