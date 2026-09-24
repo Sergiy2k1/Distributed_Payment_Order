@@ -1,8 +1,9 @@
+using Microsoft.Extensions.Logging;
 using PayFlow.Order.Infrastructure.Messaging.Outbox;
 
 namespace PayFlow.Order.Api.HostedServices;
 
-public sealed class OutboxPublisherBackgroundService
+public sealed partial class OutboxPublisherBackgroundService
     : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
@@ -24,22 +25,19 @@ public sealed class OutboxPublisherBackgroundService
     {
         if (!_options.Enabled)
         {
-            _logger.LogInformation(
-                "Order Outbox publisher is disabled.");
+            LogPublisherDisabled(_logger);
 
             return;
         }
 
         if (!HasConfiguredTransport())
         {
-            _logger.LogCritical(
-                "Order Outbox publisher is enabled, but no IOutboxTransport is configured.");
+            LogTransportMissing(_logger);
 
             return;
         }
 
-        _logger.LogInformation(
-            "Order Outbox publisher started.");
+        LogPublisherStarted(_logger);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -60,8 +58,8 @@ public sealed class OutboxPublisherBackgroundService
 
                 if (result.ClaimedCount > 0)
                 {
-                    _logger.LogInformation(
-                        "Order Outbox batch processed. Claimed: {ClaimedCount}, Published: {PublishedCount}, Failed: {FailedCount}.",
+                    LogBatchProcessed(
+                        _logger,
                         result.ClaimedCount,
                         result.PublishedCount,
                         result.FailedCount);
@@ -74,9 +72,9 @@ public sealed class OutboxPublisherBackgroundService
             }
             catch (Exception exception)
             {
-                _logger.LogError(
-                    exception,
-                    "Order Outbox publisher iteration failed.");
+                LogIterationFailed(
+                    _logger,
+                    exception);
 
                 shouldDelay = true;
             }
@@ -97,8 +95,7 @@ public sealed class OutboxPublisherBackgroundService
             }
         }
 
-        _logger.LogInformation(
-            "Order Outbox publisher stopped.");
+        LogPublisherStopped(_logger);
     }
 
     private bool HasConfiguredTransport()
@@ -108,4 +105,50 @@ public sealed class OutboxPublisherBackgroundService
         return scope.ServiceProvider
             .GetService<IOutboxTransport>() is not null;
     }
+
+    [LoggerMessage(
+        EventId = 1000,
+        Level = LogLevel.Information,
+        Message = "Order Outbox publisher is disabled.")]
+    private static partial void LogPublisherDisabled(
+        ILogger logger);
+
+    [LoggerMessage(
+        EventId = 1001,
+        Level = LogLevel.Critical,
+        Message = "Order Outbox publisher is enabled, but no IOutboxTransport is configured.")]
+    private static partial void LogTransportMissing(
+        ILogger logger);
+
+    [LoggerMessage(
+        EventId = 1002,
+        Level = LogLevel.Information,
+        Message = "Order Outbox publisher started.")]
+    private static partial void LogPublisherStarted(
+        ILogger logger);
+
+    [LoggerMessage(
+        EventId = 1003,
+        Level = LogLevel.Information,
+        Message = "Order Outbox batch processed. Claimed: {ClaimedCount}, Published: {PublishedCount}, Failed: {FailedCount}.")]
+    private static partial void LogBatchProcessed(
+        ILogger logger,
+        int claimedCount,
+        int publishedCount,
+        int failedCount);
+
+    [LoggerMessage(
+        EventId = 1004,
+        Level = LogLevel.Error,
+        Message = "Order Outbox publisher iteration failed.")]
+    private static partial void LogIterationFailed(
+        ILogger logger,
+        Exception exception);
+
+    [LoggerMessage(
+        EventId = 1005,
+        Level = LogLevel.Information,
+        Message = "Order Outbox publisher stopped.")]
+    private static partial void LogPublisherStopped(
+        ILogger logger);
 }
