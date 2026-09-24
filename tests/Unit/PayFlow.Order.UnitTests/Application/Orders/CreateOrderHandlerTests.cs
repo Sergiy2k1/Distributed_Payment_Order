@@ -15,11 +15,13 @@ public sealed class CreateOrderHandlerTests
     public async Task HandleCreatesPersistsAndCommitsPendingOrder()
     {
         var repository = new FakeOrderRepository();
+        var idempotencyRepository =
+            new FakeCreateOrderIdempotencyRepository();
         var unitOfWork = new FakeUnitOfWork();
-        var handler = new CreateOrderHandler(
+        var handler = CreateHandler(
             repository,
-            unitOfWork,
-            new FakeClock(FixedUtcNow));
+            idempotencyRepository,
+            unitOfWork);
         var customerId = Guid.NewGuid();
         var command = new CreateOrderCommand(
             customerId,
@@ -32,7 +34,8 @@ public sealed class CreateOrderHandlerTests
             command,
             TestContext.Current.CancellationToken);
 
-        var order = Assert.IsType<OrderAggregate>(repository.AddedOrder);
+        var order = Assert.IsType<OrderAggregate>(
+            repository.AddedOrder);
         Assert.Equal(result.OrderId, order.Id.Value);
         Assert.Equal(customerId, order.CustomerId.Value);
         Assert.Equal(OrderStatus.Pending, order.Status);
@@ -42,6 +45,7 @@ public sealed class CreateOrderHandlerTests
         Assert.Equal("USD", result.Currency);
         Assert.Equal(OrderStatus.Pending, result.Status);
         Assert.Equal(1, unitOfWork.SaveChangesCallCount);
+        Assert.Null(idempotencyRepository.AddedRecord);
         Assert.IsType<OrderCreatedDomainEvent>(
             Assert.Single(order.DomainEvents));
     }
@@ -50,16 +54,20 @@ public sealed class CreateOrderHandlerTests
     public async Task HandlePassesCancellationTokenToPersistenceBoundary()
     {
         var repository = new FakeOrderRepository();
+        var idempotencyRepository =
+            new FakeCreateOrderIdempotencyRepository();
         var unitOfWork = new FakeUnitOfWork();
-        var handler = new CreateOrderHandler(
+        var handler = CreateHandler(
             repository,
-            unitOfWork,
-            new FakeClock(FixedUtcNow));
-        using var cancellationTokenSource = new CancellationTokenSource();
+            idempotencyRepository,
+            unitOfWork);
+        using var cancellationTokenSource =
+            new CancellationTokenSource();
         var command = CreateValidCommand();
 
         await handler.HandleAsync(
             command,
+            "create-order-token",
             cancellationTokenSource.Token);
 
         Assert.Equal(
@@ -67,17 +75,125 @@ public sealed class CreateOrderHandlerTests
             repository.ReceivedCancellationToken);
         Assert.Equal(
             cancellationTokenSource.Token,
+            idempotencyRepository.ReceivedGetCancellationToken);
+        Assert.Equal(
+            cancellationTokenSource.Token,
+            idempotencyRepository.ReceivedAddCancellationToken);
+        Assert.Equal(
+            cancellationTokenSource.Token,
             unitOfWork.ReceivedCancellationToken);
+    }
+
+    [Fact]
+    public async Task HandleWithNewIdempotencyKeyPersistsRecordAndOrderTogether()
+    {
+        var repository = new FakeOrderRepository();
+        var idempotencyRepository =
+            new FakeCreateOrderIdempotencyRepository();
+        var unitOfWork = new FakeUnitOfWork();
+        var handler = CreateHandler(
+            repository,
+            idempotencyRepository,
+            unitOfWork);
+        var command = CreateValidCommand();
+
+        var result = await handler.HandleAsync(
+            command,
+            "create-order-001",
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(repository.AddedOrder);
+        var record = Assert.IsType<CreateOrderIdempotencyRecord>(
+            idempotencyRepository.AddedRecord);
+        Assert.Equal("create-order-001", record.IdempotencyKey);
+        Assert.Equal(
+            CreateOrderRequestHasher.ComputeHash(command),
+            record.RequestHash);
+        Assert.Equal(result, record.Result);
+        Assert.Equal(FixedUtcNow, record.CreatedAtUtc);
+        Assert.Equal(1, unitOfWork.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task HandleWithSameKeyAndPayloadReturnsOriginalResult()
+    {
+        var command = CreateValidCommand();
+        var originalResult = new CreateOrderResult(
+            Guid.NewGuid(),
+            OrderStatus.Pending,
+            10m,
+            "USD");
+        var idempotencyRepository =
+            new FakeCreateOrderIdempotencyRepository
+            {
+                ExistingRecord = new CreateOrderIdempotencyRecord(
+                    "create-order-001",
+                    CreateOrderRequestHasher.ComputeHash(command),
+                    originalResult,
+                    FixedUtcNow)
+            };
+        var repository = new FakeOrderRepository();
+        var unitOfWork = new FakeUnitOfWork();
+        var handler = CreateHandler(
+            repository,
+            idempotencyRepository,
+            unitOfWork);
+
+        var result = await handler.HandleAsync(
+            command,
+            "create-order-001",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(originalResult, result);
+        Assert.Null(repository.AddedOrder);
+        Assert.Null(idempotencyRepository.AddedRecord);
+        Assert.Equal(0, unitOfWork.SaveChangesCallCount);
+    }
+
+    [Fact]
+    public async Task HandleWithSameKeyAndDifferentPayloadThrowsConflict()
+    {
+        var command = CreateValidCommand();
+        var idempotencyRepository =
+            new FakeCreateOrderIdempotencyRepository
+            {
+                ExistingRecord = new CreateOrderIdempotencyRecord(
+                    "create-order-001",
+                    new string('A', 64),
+                    new CreateOrderResult(
+                        Guid.NewGuid(),
+                        OrderStatus.Pending,
+                        10m,
+                        "USD"),
+                    FixedUtcNow)
+            };
+        var repository = new FakeOrderRepository();
+        var unitOfWork = new FakeUnitOfWork();
+        var handler = CreateHandler(
+            repository,
+            idempotencyRepository,
+            unitOfWork);
+
+        await Assert.ThrowsAsync<
+            CreateOrderIdempotencyConflictException>(
+            () => handler.HandleAsync(
+                command,
+                "create-order-001",
+                TestContext.Current.CancellationToken));
+
+        Assert.Null(repository.AddedOrder);
+        Assert.Null(idempotencyRepository.AddedRecord);
+        Assert.Equal(0, unitOfWork.SaveChangesCallCount);
     }
 
     [Fact]
     public async Task HandleRejectsEmptyCustomerId()
     {
         var unitOfWork = new FakeUnitOfWork();
-        var handler = new CreateOrderHandler(
+        var handler = CreateHandler(
             new FakeOrderRepository(),
-            unitOfWork,
-            new FakeClock(FixedUtcNow));
+            new FakeCreateOrderIdempotencyRepository(),
+            unitOfWork);
         var command = new CreateOrderCommand(
             Guid.Empty,
             [new CreateOrderItem("SKU-001", 1, 10m, "USD")]);
@@ -95,10 +211,10 @@ public sealed class CreateOrderHandlerTests
     public async Task HandleRejectsEmptyItems()
     {
         var unitOfWork = new FakeUnitOfWork();
-        var handler = new CreateOrderHandler(
+        var handler = CreateHandler(
             new FakeOrderRepository(),
-            unitOfWork,
-            new FakeClock(FixedUtcNow));
+            new FakeCreateOrderIdempotencyRepository(),
+            unitOfWork);
         var command = new CreateOrderCommand(
             Guid.NewGuid(),
             []);
@@ -110,6 +226,18 @@ public sealed class CreateOrderHandlerTests
 
         Assert.Equal("items", exception.ParamName);
         Assert.Equal(0, unitOfWork.SaveChangesCallCount);
+    }
+
+    private static CreateOrderHandler CreateHandler(
+        IOrderRepository orderRepository,
+        ICreateOrderIdempotencyRepository idempotencyRepository,
+        IUnitOfWork unitOfWork)
+    {
+        return new CreateOrderHandler(
+            orderRepository,
+            idempotencyRepository,
+            unitOfWork,
+            new FakeClock(FixedUtcNow));
     }
 
     private static CreateOrderCommand CreateValidCommand()
@@ -136,6 +264,35 @@ public sealed class CreateOrderHandlerTests
         {
             AddedOrder = order;
             ReceivedCancellationToken = cancellationToken;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeCreateOrderIdempotencyRepository
+        : ICreateOrderIdempotencyRepository
+    {
+        public CreateOrderIdempotencyRecord? ExistingRecord { get; init; }
+
+        public CreateOrderIdempotencyRecord? AddedRecord { get; private set; }
+
+        public CancellationToken ReceivedGetCancellationToken { get; private set; }
+
+        public CancellationToken ReceivedAddCancellationToken { get; private set; }
+
+        public Task<CreateOrderIdempotencyRecord?> GetByKeyAsync(
+            string idempotencyKey,
+            CancellationToken cancellationToken = default)
+        {
+            ReceivedGetCancellationToken = cancellationToken;
+            return Task.FromResult(ExistingRecord);
+        }
+
+        public Task AddAsync(
+            CreateOrderIdempotencyRecord record,
+            CancellationToken cancellationToken = default)
+        {
+            AddedRecord = record;
+            ReceivedAddCancellationToken = cancellationToken;
             return Task.CompletedTask;
         }
     }

@@ -19,12 +19,16 @@ if (string.IsNullOrWhiteSpace(orderDatabaseConnectionString))
 }
 
 builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<IdempotencyConflictExceptionHandler>();
 builder.Services.AddExceptionHandler<DomainValidationExceptionHandler>();
 
 builder.Services.AddDbContext<OrderDbContext>(
     options => options.UseNpgsql(orderDatabaseConnectionString));
 
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<
+    ICreateOrderIdempotencyRepository,
+    CreateOrderIdempotencyRepository>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddScoped<CreateOrderHandler>();

@@ -10,12 +10,39 @@ public static class CreateOrderEndpoint
         endpoints.MapPost(
                 "/orders",
                 async (
+                    HttpContext httpContext,
                     CreateOrderRequest request,
                     CreateOrderHandler handler,
                     CancellationToken cancellationToken) =>
                 {
                     var validationErrors =
                         CreateOrderRequestValidator.Validate(request);
+
+                    var idempotencyKeyValues =
+                        httpContext.Request.Headers["Idempotency-Key"];
+
+                    if (idempotencyKeyValues.Count > 1)
+                    {
+                        validationErrors["Idempotency-Key"] =
+                        [
+                            "Idempotency-Key must contain a single value."
+                        ];
+                    }
+
+                    var idempotencyKey =
+                        idempotencyKeyValues.Count == 0
+                            ? null
+                            : idempotencyKeyValues.ToString();
+
+                    if (idempotencyKey is not null
+                        && (string.IsNullOrWhiteSpace(idempotencyKey)
+                            || idempotencyKey.Length > 128))
+                    {
+                        validationErrors["Idempotency-Key"] =
+                        [
+                            "Idempotency-Key must be non-empty and cannot exceed 128 characters."
+                        ];
+                    }
 
                     if (validationErrors.Count > 0)
                     {
@@ -35,7 +62,10 @@ public static class CreateOrderEndpoint
                             .ToArray());
 
                     var result = await handler
-                        .HandleAsync(command, cancellationToken)
+                        .HandleAsync(
+                            command,
+                            idempotencyKey,
+                            cancellationToken)
                         .ConfigureAwait(false);
 
                     var response = new CreateOrderResponse(
@@ -51,7 +81,9 @@ public static class CreateOrderEndpoint
             .WithName("CreateOrder")
             .Produces<CreateOrderResponse>(
                 StatusCodes.Status201Created)
-            .ProducesValidationProblem();
+            .ProducesValidationProblem()
+            .ProducesProblem(
+                StatusCodes.Status409Conflict);
 
         return endpoints;
     }
