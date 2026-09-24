@@ -46,8 +46,10 @@ public sealed class CreateOrderHandlerTests
         Assert.Equal(OrderStatus.Pending, result.Status);
         Assert.Equal(1, unitOfWork.SaveChangesCallCount);
         Assert.Null(idempotencyRepository.AddedRecord);
-        Assert.IsType<OrderCreatedDomainEvent>(
-            Assert.Single(order.DomainEvents));
+        var outboxEvent = Assert.IsType<OrderCreatedDomainEvent>(
+            Assert.Single(handler.OutboxWriter.AddedEvents));
+        Assert.Equal(order.Id, outboxEvent.OrderId);
+        Assert.Empty(order.DomainEvents);
     }
 
     [Fact]
@@ -79,6 +81,9 @@ public sealed class CreateOrderHandlerTests
         Assert.Equal(
             cancellationTokenSource.Token,
             idempotencyRepository.ReceivedAddCancellationToken);
+        Assert.Equal(
+            cancellationTokenSource.Token,
+            handler.OutboxWriter.ReceivedCancellationToken);
         Assert.Equal(
             cancellationTokenSource.Token,
             unitOfWork.ReceivedCancellationToken);
@@ -304,16 +309,46 @@ public sealed class CreateOrderHandlerTests
         Assert.Equal(0, unitOfWork.SaveChangesCallCount);
     }
 
-    private static CreateOrderHandler CreateHandler(
+    private static TestCreateOrderHandler CreateHandler(
         IOrderRepository orderRepository,
         ICreateOrderIdempotencyRepository idempotencyRepository,
         IUnitOfWork unitOfWork)
     {
-        return new CreateOrderHandler(
-            orderRepository,
-            idempotencyRepository,
-            unitOfWork,
-            new FakeClock(FixedUtcNow));
+        var outboxWriter = new FakeOutboxWriter();
+
+        return new TestCreateOrderHandler(
+            new CreateOrderHandler(
+                orderRepository,
+                idempotencyRepository,
+                outboxWriter,
+                unitOfWork,
+                new FakeClock(FixedUtcNow)),
+            outboxWriter);
+    }
+
+    private sealed record TestCreateOrderHandler(
+        CreateOrderHandler Handler,
+        FakeOutboxWriter OutboxWriter)
+    {
+        public Task<CreateOrderResult> HandleAsync(
+            CreateOrderCommand command,
+            CancellationToken cancellationToken = default)
+        {
+            return Handler.HandleAsync(
+                command,
+                cancellationToken);
+        }
+
+        public Task<CreateOrderResult> HandleAsync(
+            CreateOrderCommand command,
+            string? idempotencyKey,
+            CancellationToken cancellationToken = default)
+        {
+            return Handler.HandleAsync(
+                command,
+                idempotencyKey,
+                cancellationToken);
+        }
     }
 
     private static CreateOrderCommand CreateValidCommand()
@@ -383,6 +418,22 @@ public sealed class CreateOrderHandlerTests
         {
             AddedRecord = record;
             ReceivedAddCancellationToken = cancellationToken;
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeOutboxWriter : IOutboxWriter
+    {
+        public List<IDomainEvent> AddedEvents { get; } = [];
+
+        public CancellationToken ReceivedCancellationToken { get; private set; }
+
+        public Task AddAsync(
+            IDomainEvent domainEvent,
+            CancellationToken cancellationToken = default)
+        {
+            AddedEvents.Add(domainEvent);
+            ReceivedCancellationToken = cancellationToken;
             return Task.CompletedTask;
         }
     }

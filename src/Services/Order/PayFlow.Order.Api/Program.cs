@@ -3,6 +3,7 @@ using PayFlow.Order.Api.Endpoints.Orders.CreateOrder;
 using PayFlow.Order.Api.Errors;
 using PayFlow.Order.Application.Abstractions;
 using PayFlow.Order.Application.Orders.CreateOrder;
+using PayFlow.Order.Infrastructure.Messaging.Outbox;
 using PayFlow.Order.Infrastructure.Persistence;
 using PayFlow.Order.Infrastructure.Persistence.Repositories;
 using PayFlow.Order.Infrastructure.Time;
@@ -29,6 +30,7 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<
     ICreateOrderIdempotencyRepository,
     CreateOrderIdempotencyRepository>();
+builder.Services.AddScoped<IOutboxWriter, OrderOutboxWriter>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddScoped<CreateOrderHandler>();

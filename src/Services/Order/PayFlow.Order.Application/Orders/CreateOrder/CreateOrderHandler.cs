@@ -8,17 +8,20 @@ public sealed class CreateOrderHandler
 {
     private readonly IOrderRepository _orderRepository;
     private readonly ICreateOrderIdempotencyRepository _idempotencyRepository;
+    private readonly IOutboxWriter _outboxWriter;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IClock _clock;
 
     public CreateOrderHandler(
         IOrderRepository orderRepository,
         ICreateOrderIdempotencyRepository idempotencyRepository,
+        IOutboxWriter outboxWriter,
         IUnitOfWork unitOfWork,
         IClock clock)
     {
         _orderRepository = orderRepository;
         _idempotencyRepository = idempotencyRepository;
+        _outboxWriter = outboxWriter;
         _unitOfWork = unitOfWork;
         _clock = clock;
     }
@@ -109,6 +112,15 @@ public sealed class CreateOrderHandler
                 .ConfigureAwait(false);
         }
 
+        foreach (var domainEvent in order.DomainEvents)
+        {
+            await _outboxWriter
+                .AddAsync(
+                    domainEvent,
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         try
         {
             await _unitOfWork
@@ -134,6 +146,8 @@ public sealed class CreateOrderHandler
                 winner,
                 requestHash!);
         }
+
+        order.ClearDomainEvents();
 
         return result;
     }

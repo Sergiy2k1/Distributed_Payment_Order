@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PayFlow.Order.Application.Abstractions;
 using PayFlow.Order.Application.Orders.CreateOrder;
+using PayFlow.Order.Infrastructure.Messaging.Outbox;
 using PayFlow.Order.Infrastructure.Persistence;
 using PayFlow.Order.Infrastructure.Persistence.Repositories;
 using PayFlow.Order.Infrastructure.Time;
@@ -186,6 +187,7 @@ public sealed class CreateOrderIdempotencyConcurrencyTests(
             new GatedIdempotencyRepository(
                 innerIdempotencyRepository,
                 gate),
+            new OrderOutboxWriter(dbContext),
             new EfUnitOfWork(dbContext),
             new SystemClock());
     }
