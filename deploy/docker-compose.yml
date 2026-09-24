@@ -18,6 +18,25 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  saga-db:
+    image: postgres:17-alpine
+    container_name: payflow-saga-db
+    environment:
+      POSTGRES_DB: saga_db
+      POSTGRES_USER: payflow_saga
+      POSTGRES_PASSWORD: ${SAGA_DB_PASSWORD:?SAGA_DB_PASSWORD is required}
+    ports:
+      - "${SAGA_DB_PORT:-5434}:5432"
+    volumes:
+      - saga-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payflow_saga -d saga_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
   kafka:
     image: apache/kafka:4.3.1
     container_name: payflow-kafka
@@ -68,4 +87,5 @@ services:
 
 volumes:
   order-db-data:
+  saga-db-data:
   kafka-data:
