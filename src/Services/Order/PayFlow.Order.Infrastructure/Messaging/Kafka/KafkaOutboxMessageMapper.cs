@@ -29,7 +29,7 @@ public static class KafkaOutboxMessageMapper
         if (message.SchemaVersion <= 0)
         {
             throw new ArgumentOutOfRangeException(
-                nameof(message.SchemaVersion),
+                nameof(message),
                 message.SchemaVersion,
                 "Schema version must be greater than zero.");
         }
