@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# This script must use LF line endings because it runs inside a Linux container.
 set -euo pipefail
 
 KAFKA_TOPICS="/opt/kafka/bin/kafka-topics.sh"
