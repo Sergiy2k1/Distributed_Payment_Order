@@ -4,7 +4,7 @@ using PayFlow.Order.Infrastructure.Persistence.Entities;
 
 namespace PayFlow.Order.Infrastructure.Messaging.Outbox;
 
-public sealed class OutboxMessageRepository
+public sealed class OutboxMessageRepository : IOutboxMessageRepository
 {
     private readonly OrderDbContext _dbContext;
 
