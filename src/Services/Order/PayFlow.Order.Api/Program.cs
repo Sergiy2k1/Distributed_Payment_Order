@@ -1,9 +1,11 @@
+using Confluent.Kafka;
 using Microsoft.EntityFrameworkCore;
 using PayFlow.Order.Api.Endpoints.Orders.CreateOrder;
 using PayFlow.Order.Api.Errors;
 using PayFlow.Order.Api.HostedServices;
 using PayFlow.Order.Application.Abstractions;
 using PayFlow.Order.Application.Orders.CreateOrder;
+using PayFlow.Order.Infrastructure.Messaging.Kafka;
 using PayFlow.Order.Infrastructure.Messaging.Outbox;
 using PayFlow.Order.Infrastructure.Persistence;
 using PayFlow.Order.Infrastructure.Persistence.Repositories;
@@ -47,6 +49,28 @@ var outboxPublisherWorkerOptions =
             "PollInterval",
             TimeSpan.FromSeconds(1)));
 
+var kafkaSection =
+    builder.Configuration.GetSection("Kafka");
+
+var kafkaProducerOptions =
+    new KafkaProducerOptions(
+        kafkaSection.GetValue<string>(
+            "BootstrapServers")
+            ?? "localhost:9092",
+        kafkaSection.GetValue<string>(
+            "ClientId")
+            ?? "payflow-order",
+        kafkaSection.GetValue(
+            "MessageTimeout",
+            TimeSpan.FromSeconds(10)));
+
+if (kafkaProducerOptions.MessageTimeout
+    >= outboxPublisherOptions.LeaseDuration)
+{
+    throw new InvalidOperationException(
+        "Kafka MessageTimeout must be shorter than the Outbox publisher LeaseDuration.");
+}
+
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<IdempotencyConflictExceptionHandler>();
 builder.Services.AddExceptionHandler<DomainValidationExceptionHandler>();
@@ -65,6 +89,18 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<OutboxPublisher>();
 builder.Services.AddSingleton(outboxPublisherOptions);
 builder.Services.AddSingleton(outboxPublisherWorkerOptions);
+builder.Services.AddSingleton(kafkaProducerOptions);
+builder.Services.AddSingleton<IProducer<string, string>>(
+    _ => new ProducerBuilder<string, string>(
+            KafkaProducerConfigFactory.Create(
+                kafkaProducerOptions))
+        .Build());
+builder.Services.AddSingleton<
+    IKafkaMessageProducer,
+    ConfluentKafkaMessageProducer>();
+builder.Services.AddSingleton<
+    IOutboxTransport,
+    KafkaOutboxTransport>();
 builder.Services.AddHostedService<OutboxPublisherBackgroundService>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 builder.Services.AddSingleton<IClock, SystemClock>();

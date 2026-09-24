@@ -1,0 +1,100 @@
+using System.Globalization;
+using PayFlow.Order.Infrastructure.Persistence.Entities;
+
+namespace PayFlow.Order.Infrastructure.Messaging.Kafka;
+
+public static class KafkaOutboxMessageMapper
+{
+    public static KafkaPublishRequest Map(
+        OutboxMessageEntity message)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            message.Destination);
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            message.MessageType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            message.Producer);
+
+        EnsureIdentity(
+            message.MessageId,
+            nameof(message.MessageId));
+        EnsureIdentity(
+            message.AggregateId,
+            nameof(message.AggregateId));
+        EnsureIdentity(
+            message.CorrelationId,
+            nameof(message.CorrelationId));
+
+        if (message.SchemaVersion <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(message.SchemaVersion),
+                message.SchemaVersion,
+                "Schema version must be greater than zero.");
+        }
+
+        var headers = new List<KafkaHeader>
+        {
+            new(
+                "message-id",
+                message.MessageId.ToString("D")),
+            new(
+                "message-type",
+                message.MessageType),
+            new(
+                "schema-version",
+                message.SchemaVersion.ToString(
+                    CultureInfo.InvariantCulture)),
+            new(
+                "aggregate-id",
+                message.AggregateId.ToString("D")),
+            new(
+                "correlation-id",
+                message.CorrelationId.ToString("D")),
+            new(
+                "occurred-at-utc",
+                message.OccurredAtUtc.ToString(
+                    "O",
+                    CultureInfo.InvariantCulture)),
+            new(
+                "producer",
+                message.Producer)
+        };
+
+        if (message.CausationId is { } causationId)
+        {
+            headers.Add(
+                new KafkaHeader(
+                    "causation-id",
+                    causationId.ToString("D")));
+        }
+
+        if (!string.IsNullOrWhiteSpace(
+                message.TraceParent))
+        {
+            headers.Add(
+                new KafkaHeader(
+                    "traceparent",
+                    message.TraceParent));
+        }
+
+        return new KafkaPublishRequest(
+            message.Destination,
+            message.AggregateId.ToString("D"),
+            message.Payload,
+            headers);
+    }
+
+    private static void EnsureIdentity(
+        Guid value,
+        string parameterName)
+    {
+        if (value == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Identifier cannot be empty.",
+                parameterName);
+        }
+    }
+}
