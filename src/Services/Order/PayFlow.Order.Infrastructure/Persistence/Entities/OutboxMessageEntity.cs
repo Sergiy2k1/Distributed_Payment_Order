@@ -35,4 +35,8 @@ public sealed class OutboxMessageEntity
     public DateTimeOffset? NextAttemptAtUtc { get; set; }
 
     public string? LastErrorCode { get; set; }
+
+    public Guid? ClaimToken { get; set; }
+
+    public DateTimeOffset? ClaimedUntilUtc { get; set; }
 }

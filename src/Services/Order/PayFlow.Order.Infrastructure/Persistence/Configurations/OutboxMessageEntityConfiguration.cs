@@ -21,6 +21,11 @@ public sealed class OutboxMessageEntityConfiguration
                 table.HasCheckConstraint(
                     "ck_outbox_messages_attempt_count_non_negative",
                     "attempt_count >= 0");
+
+                table.HasCheckConstraint(
+                    "ck_outbox_messages_claim_pair",
+                    "(claim_token IS NULL AND claimed_until_utc IS NULL) OR "
+                    + "(claim_token IS NOT NULL AND claimed_until_utc IS NOT NULL)");
             });
 
         builder.HasKey(message => message.OutboxMessageId);
@@ -94,6 +99,12 @@ public sealed class OutboxMessageEntityConfiguration
         builder.Property(message => message.LastErrorCode)
             .HasColumnName("last_error_code")
             .HasMaxLength(128);
+
+        builder.Property(message => message.ClaimToken)
+            .HasColumnName("claim_token");
+
+        builder.Property(message => message.ClaimedUntilUtc)
+            .HasColumnName("claimed_until_utc");
 
         builder.HasIndex(message => message.MessageId)
             .IsUnique();
