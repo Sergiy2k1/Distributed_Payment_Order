@@ -61,41 +61,10 @@ services:
     depends_on:
       kafka:
         condition: service_healthy
-    entrypoint: ["/bin/bash", "-c"]
-    command: >
-      set -euo pipefail;
-      for topic in
-      orders.events
-      inventory.events
-      payments.events
-      orders.commands
-      inventory.commands
-      payments.commands;
-      do
-        /opt/kafka/bin/kafka-topics.sh
-        --bootstrap-server kafka:19092
-        --create
-        --if-not-exists
-        --topic "$$topic"
-        --partitions 3
-        --replication-factor 1
-        --config retention.ms=604800000;
-      done;
-      for topic in
-      saga.events.dlq
-      orders.commands.dlq
-      inventory.commands.dlq
-      payments.commands.dlq;
-      do
-        /opt/kafka/bin/kafka-topics.sh
-        --bootstrap-server kafka:19092
-        --create
-        --if-not-exists
-        --topic "$$topic"
-        --partitions 3
-        --replication-factor 1
-        --config retention.ms=2592000000;
-      done;
+    volumes:
+      - ./kafka/create-topics.sh:/opt/payflow/create-topics.sh:ro
+    entrypoint: ["/bin/bash", "/opt/payflow/create-topics.sh"]
+    restart: "no"
 
 volumes:
   order-db-data:
