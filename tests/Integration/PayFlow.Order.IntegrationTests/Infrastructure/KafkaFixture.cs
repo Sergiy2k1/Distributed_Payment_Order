@@ -1,5 +1,7 @@
 using Confluent.Kafka;
 using Confluent.Kafka.Admin;
+using DotNet.Testcontainers.Builders;
+using DotNet.Testcontainers.Networks;
 using Testcontainers.Kafka;
 
 namespace PayFlow.Order.IntegrationTests.Infrastructure;
@@ -8,9 +10,20 @@ public sealed class KafkaFixture : IAsyncLifetime
 {
     public const string OrdersEventsTopic = "orders.events";
 
-    private readonly KafkaContainer _container =
-        new KafkaBuilder("apache/kafka:4.3.1")
+    private readonly INetwork _network =
+        new NetworkBuilder()
             .Build();
+
+    private readonly KafkaContainer _container;
+
+    public KafkaFixture()
+    {
+        _container =
+            new KafkaBuilder("apache/kafka:4.3.1")
+                .WithNetwork(_network)
+                .WithListener("kafka:19092")
+                .Build();
+    }
 
     public string BootstrapServers =>
         _container.GetBootstrapAddress();
@@ -48,6 +61,10 @@ public sealed class KafkaFixture : IAsyncLifetime
     public async ValueTask DisposeAsync()
     {
         await _container
+            .DisposeAsync()
+            .ConfigureAwait(false);
+
+        await _network
             .DisposeAsync()
             .ConfigureAwait(false);
     }
