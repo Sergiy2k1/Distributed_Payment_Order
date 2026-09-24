@@ -30,7 +30,7 @@ public sealed class KafkaOutboxTransportTests
 
         Assert.Equal("orders.events", actual.Topic);
         Assert.Equal(OrderId.ToString("D"), actual.Key);
-        Assert.Equal("{"orderId":"test"}", actual.Value);
+        Assert.Equal("""{"orderId":"test"}""", actual.Value);
         Assert.Equal(
             MessageId.ToString("D"),
             GetHeader(actual, "message-id"));
@@ -139,7 +139,7 @@ public sealed class KafkaOutboxTransportTests
             Destination = "orders.events",
             Producer = "Order",
             TraceParent = traceParent,
-            Payload = "{"orderId":"test"}",
+            Payload = """{"orderId":"test"}""",
             CreatedAtUtc = OccurredAtUtc
         };
     }
