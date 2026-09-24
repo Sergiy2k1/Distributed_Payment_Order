@@ -138,13 +138,13 @@ public sealed class CreateOrderIdempotencyConcurrencyTests(
             secondTask);
 
         var success = Assert.Single(
-            outcomes.Where(
-                outcome => outcome.Exception is null));
+            outcomes,
+            outcome => outcome.Exception is null);
         var conflict = Assert.Single(
-            outcomes.Where(
-                outcome =>
-                    outcome.Exception
-                        is CreateOrderIdempotencyConflictException));
+            outcomes,
+            outcome =>
+                outcome.Exception
+                    is CreateOrderIdempotencyConflictException);
 
         Assert.NotNull(success.Result);
         Assert.Null(conflict.Result);
