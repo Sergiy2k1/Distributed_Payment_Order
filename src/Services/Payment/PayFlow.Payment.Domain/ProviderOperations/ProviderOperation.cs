@@ -55,6 +55,72 @@ public sealed class ProviderOperation
             createdAtUtc);
     }
 
+    public static ProviderOperation Rehydrate(
+        Guid providerOperationId,
+        Guid businessOperationId,
+        string operationType,
+        string providerIdempotencyKey,
+        ProviderOperationStatus status,
+        int attemptCount,
+        DateTimeOffset createdAtUtc,
+        DateTimeOffset updatedAtUtc,
+        DateTimeOffset? lastAttemptAtUtc,
+        DateTimeOffset? nextAttemptAtUtc,
+        string? lastErrorCode,
+        string? providerReference,
+        long version)
+    {
+        ValidateIdentity(
+            providerOperationId,
+            nameof(providerOperationId));
+        ValidateIdentity(
+            businessOperationId,
+            nameof(businessOperationId));
+        ArgumentException.ThrowIfNullOrWhiteSpace(operationType);
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerIdempotencyKey);
+        EnsureUtc(createdAtUtc, nameof(createdAtUtc));
+        EnsureUtc(updatedAtUtc, nameof(updatedAtUtc));
+        ArgumentOutOfRangeException.ThrowIfNegative(
+            attemptCount);
+        ArgumentOutOfRangeException.ThrowIfNegative(
+            version);
+
+        if (updatedAtUtc < createdAtUtc)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(updatedAtUtc));
+        }
+
+        if (lastAttemptAtUtc is { } lastAttempt)
+        {
+            EnsureUtc(lastAttempt, nameof(lastAttemptAtUtc));
+        }
+
+        if (nextAttemptAtUtc is { } nextAttempt)
+        {
+            EnsureUtc(nextAttempt, nameof(nextAttemptAtUtc));
+        }
+
+        var operation =
+            new ProviderOperation(
+                providerOperationId,
+                businessOperationId,
+                operationType,
+                providerIdempotencyKey,
+                createdAtUtc);
+
+        operation.Status = status;
+        operation.AttemptCount = attemptCount;
+        operation.UpdatedAtUtc = updatedAtUtc;
+        operation.LastAttemptAtUtc = lastAttemptAtUtc;
+        operation.NextAttemptAtUtc = nextAttemptAtUtc;
+        operation.LastErrorCode = lastErrorCode;
+        operation.ProviderReference = providerReference;
+        operation.Version = version;
+
+        return operation;
+    }
+
     public void BeginAttempt(DateTimeOffset attemptedAtUtc)
     {
         EnsureUtc(attemptedAtUtc, nameof(attemptedAtUtc));

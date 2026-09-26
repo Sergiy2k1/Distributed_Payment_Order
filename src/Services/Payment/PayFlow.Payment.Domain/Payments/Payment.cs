@@ -59,6 +59,78 @@ public sealed class Payment
             createdAtUtc);
     }
 
+    public static Payment Rehydrate(
+        Guid paymentId,
+        Guid orderId,
+        decimal amount,
+        string currency,
+        PaymentStatus status,
+        DateTimeOffset createdAtUtc,
+        DateTimeOffset updatedAtUtc,
+        DateTimeOffset? capturedAtUtc,
+        string? failureReasonCode,
+        long version)
+    {
+        var payment = Create(
+            paymentId,
+            orderId,
+            amount,
+            currency,
+            createdAtUtc);
+
+        EnsureUtc(updatedAtUtc, nameof(updatedAtUtc));
+
+        if (updatedAtUtc < createdAtUtc)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(updatedAtUtc));
+        }
+
+        ArgumentOutOfRangeException.ThrowIfNegative(
+            version);
+
+        if (capturedAtUtc is { } captured)
+        {
+            EnsureUtc(captured, nameof(capturedAtUtc));
+        }
+
+        if (status == PaymentStatus.Captured
+            && capturedAtUtc is null)
+        {
+            throw new InvalidOperationException(
+                "Captured payment must have CapturedAtUtc.");
+        }
+
+        if (status != PaymentStatus.Captured
+            && capturedAtUtc is not null)
+        {
+            throw new InvalidOperationException(
+                "Only captured payment may have CapturedAtUtc.");
+        }
+
+        if (status == PaymentStatus.Failed
+            && string.IsNullOrWhiteSpace(failureReasonCode))
+        {
+            throw new InvalidOperationException(
+                "Failed payment must have a failure reason.");
+        }
+
+        if (status != PaymentStatus.Failed
+            && failureReasonCode is not null)
+        {
+            throw new InvalidOperationException(
+                "Only failed payment may have a failure reason.");
+        }
+
+        payment.Status = status;
+        payment.UpdatedAtUtc = updatedAtUtc;
+        payment.CapturedAtUtc = capturedAtUtc;
+        payment.FailureReasonCode = failureReasonCode;
+        payment.Version = version;
+
+        return payment;
+    }
+
     public void StartProcessing(DateTimeOffset occurredAtUtc)
     {
         EnsureTransitionTime(occurredAtUtc);
