@@ -21,6 +21,12 @@ public sealed class InventoryDbContext
     public DbSet<StockItemEntity> StockItems =>
         Set<StockItemEntity>();
 
+    public DbSet<InboxMessageEntity> InboxMessages =>
+        Set<InboxMessageEntity>();
+
+    public DbSet<OutboxMessageEntity> OutboxMessages =>
+        Set<OutboxMessageEntity>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
