@@ -4,6 +4,7 @@ using PayFlow.Saga.Application.Messaging;
 using PayFlow.Saga.Application.Orders;
 using PayFlow.Saga.Domain.Checkout;
 using PayFlow.Saga.Infrastructure.Messaging;
+using PayFlow.Saga.Infrastructure.Messaging.Outbox;
 using PayFlow.Saga.Infrastructure.Persistence;
 using PayFlow.Saga.Infrastructure.Persistence.Entities;
 using PayFlow.Saga.Infrastructure.Persistence.Repositories;
