@@ -161,7 +161,7 @@ public sealed class ReserveInventoryMessageHandler
 
     private static string? DetermineRejectionReason(
         IReadOnlyCollection<InventoryReservationItem> requestedItems,
-        IReadOnlyDictionary<string, StockItem> stockBySku)
+        Dictionary<string, StockItem> stockBySku)
     {
         if (requestedItems.Any(
                 item => !stockBySku.ContainsKey(item.SkuId)))
