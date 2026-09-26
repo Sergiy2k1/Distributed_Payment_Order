@@ -26,5 +26,5 @@ public sealed class InboxMessageEntity
 
     public DateTimeOffset ReceivedAtUtc { get; set; }
 
-    public DateTimeOffset ProcessedAtUtc { get; set; }
+    public DateTimeOffset? ProcessedAtUtc { get; set; }
 }

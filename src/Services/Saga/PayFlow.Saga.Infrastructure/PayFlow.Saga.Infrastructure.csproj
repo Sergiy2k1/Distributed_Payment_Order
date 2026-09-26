@@ -12,4 +12,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
   </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../PayFlow.Saga.Application/PayFlow.Saga.Application.csproj" />
+  </ItemGroup>
 </Project>

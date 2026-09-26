@@ -60,7 +60,7 @@ partial class SagaDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("occurred_at_utc");
 
-                entity.Property<DateTimeOffset>("ProcessedAtUtc")
+                entity.Property<DateTimeOffset?>("ProcessedAtUtc")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("processed_at_utc");
 

@@ -85,8 +85,7 @@ public sealed class InboxMessageEntityConfiguration
             .IsRequired();
 
         builder.Property(message => message.ProcessedAtUtc)
-            .HasColumnName("processed_at_utc")
-            .IsRequired();
+            .HasColumnName("processed_at_utc");
 
         builder.HasIndex(
                 message => new

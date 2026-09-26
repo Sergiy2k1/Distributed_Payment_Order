@@ -53,7 +53,7 @@ public sealed class InboxMessageRepository
                      {message.SourcePartition},
                      {message.SourceOffset},
                      {message.ReceivedAtUtc},
-                     {message.ProcessedAtUtc}
+                     NULL
                  )
                  ON CONFLICT (consumer_name, message_id)
                  DO NOTHING
@@ -62,5 +62,47 @@ public sealed class InboxMessageRepository
             .ConfigureAwait(false);
 
         return affectedRows == 1;
+    }
+
+    public async Task MarkProcessedAsync(
+        string consumerName,
+        Guid messageId,
+        DateTimeOffset processedAtUtc,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(
+            consumerName);
+
+        if (messageId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "Message ID cannot be empty.",
+                nameof(messageId));
+        }
+
+        if (processedAtUtc.Offset != TimeSpan.Zero)
+        {
+            throw new ArgumentException(
+                "Processed timestamp must use UTC offset.",
+                nameof(processedAtUtc));
+        }
+
+        var affectedRows = await _dbContext.InboxMessages
+            .Where(message =>
+                message.ConsumerName == consumerName
+                && message.MessageId == messageId
+                && message.ProcessedAtUtc == null)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(
+                    message => message.ProcessedAtUtc,
+                    processedAtUtc),
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (affectedRows != 1)
+        {
+            throw new InvalidOperationException(
+                "Inbox message is missing or already processed.");
+        }
     }
 }
