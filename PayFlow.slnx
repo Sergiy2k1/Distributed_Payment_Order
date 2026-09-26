@@ -1,4 +1,7 @@
 <Solution>
+  <Project Path="src/Services/Inventory/PayFlow.Inventory.Application/PayFlow.Inventory.Application.csproj" />
+  <Project Path="src/Services/Inventory/PayFlow.Inventory.Domain/PayFlow.Inventory.Domain.csproj" />
+  <Project Path="src/Services/Inventory/PayFlow.Inventory.Infrastructure/PayFlow.Inventory.Infrastructure.csproj" />
   <Project Path="src/Services/Order/PayFlow.Order.Api/PayFlow.Order.Api.csproj" />
   <Project Path="src/Services/Order/PayFlow.Order.Application/PayFlow.Order.Application.csproj" />
   <Project Path="src/Services/Order/PayFlow.Order.Domain/PayFlow.Order.Domain.csproj" />
@@ -9,6 +12,7 @@
   <Project Path="src/Services/Saga/PayFlow.Saga.Worker/PayFlow.Saga.Worker.csproj" />
   <Project Path="tests/Integration/PayFlow.Order.IntegrationTests/PayFlow.Order.IntegrationTests.csproj" />
   <Project Path="tests/Integration/PayFlow.Saga.IntegrationTests/PayFlow.Saga.IntegrationTests.csproj" />
+  <Project Path="tests/Unit/PayFlow.Inventory.UnitTests/PayFlow.Inventory.UnitTests.csproj" />
   <Project Path="tests/Unit/PayFlow.Order.UnitTests/PayFlow.Order.UnitTests.csproj" />
   <Project Path="tests/Unit/PayFlow.Saga.UnitTests/PayFlow.Saga.UnitTests.csproj" />
 </Solution>
