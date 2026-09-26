@@ -43,6 +43,75 @@ public sealed class Order
     public IReadOnlyCollection<IDomainEvent> DomainEvents =>
         _domainEvents.AsReadOnly();
 
+    public static Order Rehydrate(
+        OrderId id,
+        CustomerId customerId,
+        IEnumerable<OrderItem> items,
+        Money total,
+        OrderStatus status,
+        DateTimeOffset createdAtUtc,
+        DateTimeOffset updatedAtUtc,
+        long version)
+    {
+        ArgumentNullException.ThrowIfNull(items);
+        ArgumentNullException.ThrowIfNull(total);
+        EnsureUtc(createdAtUtc, nameof(createdAtUtc));
+        EnsureUtc(updatedAtUtc, nameof(updatedAtUtc));
+
+        if (updatedAtUtc < createdAtUtc)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(updatedAtUtc),
+                updatedAtUtc,
+                "Order update timestamp cannot be earlier than creation timestamp.");
+        }
+
+        if (version < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(version),
+                version,
+                "Order version cannot be negative.");
+        }
+
+        var itemArray = items.ToArray();
+
+        if (itemArray.Length == 0)
+        {
+            throw new ArgumentException(
+                "Order must contain at least one item.",
+                nameof(items));
+        }
+
+        var calculatedTotal = Money.Zero(total.Currency);
+
+        foreach (var item in itemArray)
+        {
+            calculatedTotal =
+                calculatedTotal.Add(item.LineTotal);
+        }
+
+        if (calculatedTotal != total)
+        {
+            throw new InvalidOperationException(
+                "Persisted Order total does not match its item snapshot.");
+        }
+
+        var order = new Order(
+            id,
+            customerId,
+            Array.AsReadOnly(itemArray),
+            total,
+            createdAtUtc)
+        {
+            Status = status,
+            UpdatedAtUtc = updatedAtUtc,
+            Version = version
+        };
+
+        return order;
+    }
+
     public static Order Create(
         OrderId id,
         CustomerId customerId,
