@@ -1,3 +1,4 @@
+using System.Text;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -67,23 +68,13 @@ public sealed partial class OrderCreatedConsumerBackgroundService
                     result = consumer.Consume(
                         stoppingToken);
 
-                    var consumedMessage =
-                        OrderCreatedKafkaMessageParser.Parse(
-                            result,
-                            _timeProvider.GetUtcNow());
-
-                    await using var scope =
-                        _scopeFactory.CreateAsyncScope();
-
-                    var processor =
-                        scope.ServiceProvider
-                            .GetRequiredService<
-                                OrderCreatedInboxProcessor>();
+                    var messageType =
+                        GetMessageType(result);
 
                     var processed =
-                        await processor.ProcessAsync(
-                                consumedMessage,
-                                _timeProvider.GetUtcNow(),
+                        await DispatchAsync(
+                                result,
+                                messageType,
                                 stoppingToken)
                             .ConfigureAwait(false);
 
@@ -94,7 +85,7 @@ public sealed partial class OrderCreatedConsumerBackgroundService
                         result.Topic,
                         result.Partition.Value,
                         result.Offset.Value,
-                        consumedMessage.Message.Envelope.MessageId,
+                        messageType,
                         processed);
                 }
                 catch (OperationCanceledException)
@@ -135,6 +126,127 @@ public sealed partial class OrderCreatedConsumerBackgroundService
         }
     }
 
+    private async Task<bool> DispatchAsync(
+        ConsumeResult<string, string> result,
+        string messageType,
+        CancellationToken cancellationToken)
+    {
+        var receivedAtUtc =
+            _timeProvider.GetUtcNow();
+
+        await using var scope =
+            _scopeFactory.CreateAsyncScope();
+
+        return messageType switch
+        {
+            OrderCreatedKafkaMessageParser.MessageType =>
+                await ProcessOrderCreatedAsync(
+                        scope.ServiceProvider,
+                        result,
+                        receivedAtUtc,
+                        cancellationToken)
+                    .ConfigureAwait(false),
+
+            OrderProcessingStartedKafkaMessageParser.MessageType =>
+                await ProcessOrderProcessingStartedAsync(
+                        scope.ServiceProvider,
+                        result,
+                        receivedAtUtc,
+                        cancellationToken)
+                    .ConfigureAwait(false),
+
+            _ => throw new InvalidDataException(
+                $"Unsupported orders.events message type '{messageType}'.")
+        };
+    }
+
+    private async Task<bool> ProcessOrderCreatedAsync(
+        IServiceProvider serviceProvider,
+        ConsumeResult<string, string> result,
+        DateTimeOffset receivedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var consumedMessage =
+            OrderCreatedKafkaMessageParser.Parse(
+                result,
+                receivedAtUtc);
+
+        var processor =
+            serviceProvider.GetRequiredService<
+                OrderCreatedInboxProcessor>();
+
+        return await processor
+            .ProcessAsync(
+                consumedMessage,
+                _timeProvider.GetUtcNow(),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<bool> ProcessOrderProcessingStartedAsync(
+        IServiceProvider serviceProvider,
+        ConsumeResult<string, string> result,
+        DateTimeOffset receivedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var consumedMessage =
+            OrderProcessingStartedKafkaMessageParser.Parse(
+                result,
+                receivedAtUtc);
+
+        var processor =
+            serviceProvider.GetRequiredService<
+                OrderProcessingStartedInboxProcessor>();
+
+        return await processor
+            .ProcessAsync(
+                consumedMessage,
+                _timeProvider.GetUtcNow(),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private static string GetMessageType(
+        ConsumeResult<string, string> result)
+    {
+        var headers = result.Message?.Headers
+            ?? throw new InvalidDataException(
+                "Kafka message headers are missing.");
+
+        var matches = headers
+            .Where(header =>
+                string.Equals(
+                    header.Key,
+                    "message-type",
+                    StringComparison.Ordinal))
+            .ToArray();
+
+        if (matches.Length != 1)
+        {
+            throw new InvalidDataException(
+                "Kafka header 'message-type' must occur exactly once.");
+        }
+
+        var bytes = matches[0].GetValueBytes();
+
+        if (bytes is null)
+        {
+            throw new InvalidDataException(
+                "Kafka header 'message-type' is empty.");
+        }
+
+        var messageType =
+            Encoding.UTF8.GetString(bytes);
+
+        if (string.IsNullOrWhiteSpace(messageType))
+        {
+            throw new InvalidDataException(
+                "Kafka header 'message-type' is empty.");
+        }
+
+        return messageType;
+    }
+
     private async Task DelayAfterFailureAsync(
         CancellationToken stoppingToken)
     {
@@ -154,7 +266,7 @@ public sealed partial class OrderCreatedConsumerBackgroundService
     [LoggerMessage(
         EventId = 1200,
         Level = LogLevel.Information,
-        Message = "Saga OrderCreated consumer started. Topic: {Topic}, Group: {ConsumerGroup}.")]
+        Message = "Saga orders.events consumer started. Topic: {Topic}, Group: {ConsumerGroup}.")]
     private static partial void LogConsumerStarted(
         ILogger logger,
         string topic,
@@ -163,13 +275,13 @@ public sealed partial class OrderCreatedConsumerBackgroundService
     [LoggerMessage(
         EventId = 1201,
         Level = LogLevel.Information,
-        Message = "Saga OrderCreated message committed. Topic: {Topic}, Partition: {Partition}, Offset: {Offset}, MessageId: {MessageId}, Processed: {Processed}.")]
+        Message = "Saga event committed. Topic: {Topic}, Partition: {Partition}, Offset: {Offset}, MessageType: {MessageType}, Processed: {Processed}.")]
     private static partial void LogMessageCommitted(
         ILogger logger,
         string topic,
         int partition,
         long offset,
-        Guid messageId,
+        string messageType,
         bool processed);
 
     [LoggerMessage(
@@ -183,7 +295,7 @@ public sealed partial class OrderCreatedConsumerBackgroundService
     [LoggerMessage(
         EventId = 1203,
         Level = LogLevel.Error,
-        Message = "Saga OrderCreated processing failed. Topic: {Topic}, Partition: {Partition}, Offset: {Offset}. Kafka offset was not committed.")]
+        Message = "Saga event processing failed. Topic: {Topic}, Partition: {Partition}, Offset: {Offset}. Kafka offset was not committed.")]
     private static partial void LogProcessingFailed(
         ILogger logger,
         Exception exception,
@@ -194,7 +306,7 @@ public sealed partial class OrderCreatedConsumerBackgroundService
     [LoggerMessage(
         EventId = 1204,
         Level = LogLevel.Information,
-        Message = "Saga OrderCreated consumer stopped.")]
+        Message = "Saga orders.events consumer stopped.")]
     private static partial void LogConsumerStopped(
         ILogger logger);
 }

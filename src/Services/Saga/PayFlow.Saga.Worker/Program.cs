@@ -119,7 +119,11 @@ builder.Services.AddScoped<IOrderCreatedMessageHandler>(
             serviceProvider.GetRequiredService<
                 ISagaOutboxWriter>(),
             orderCreatedConsumerOptions.CheckoutTimeout));
+builder.Services.AddScoped<
+    IOrderProcessingStartedMessageHandler,
+    OrderProcessingStartedMessageHandler>();
 builder.Services.AddScoped<OrderCreatedInboxProcessor>();
+builder.Services.AddScoped<OrderProcessingStartedInboxProcessor>();
 builder.Services.AddScoped<OutboxPublisher>();
 
 builder.Services.AddSingleton(outboxPublisherOptions);
