@@ -23,6 +23,12 @@ public sealed class PaymentDbContext : DbContext
     public DbSet<LedgerEntryEntity> LedgerEntries =>
         Set<LedgerEntryEntity>();
 
+    public DbSet<InboxMessageEntity> InboxMessages =>
+        Set<InboxMessageEntity>();
+
+    public DbSet<OutboxMessageEntity> OutboxMessages =>
+        Set<OutboxMessageEntity>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
