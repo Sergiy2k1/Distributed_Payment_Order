@@ -1,8 +1,14 @@
 using Confluent.Kafka;
 using Microsoft.EntityFrameworkCore;
+using PayFlow.Saga.Application.Abstractions;
+using PayFlow.Saga.Application.Checkout;
+using PayFlow.Saga.Application.Messaging;
+using PayFlow.Saga.Application.Orders;
+using PayFlow.Saga.Infrastructure.Messaging;
 using PayFlow.Saga.Infrastructure.Messaging.Kafka;
 using PayFlow.Saga.Infrastructure.Messaging.Outbox;
 using PayFlow.Saga.Infrastructure.Persistence;
+using PayFlow.Saga.Infrastructure.Persistence.Repositories;
 using PayFlow.Saga.Worker.HostedServices;
 
 var builder = Host.CreateApplicationBuilder(args);
@@ -46,6 +52,21 @@ var outboxPublisherWorkerOptions =
 var kafkaSection =
     builder.Configuration.GetSection("Kafka");
 
+var orderCreatedConsumerOptions =
+    new OrderCreatedConsumerOptions(
+        kafkaSection.GetValue<string>(
+            "BootstrapServers")
+            ?? "localhost:9092",
+        kafkaSection.GetValue<string>(
+            "OrderCreatedConsumerGroup")
+            ?? OrderCreatedInboxProcessor.ConsumerName,
+        kafkaSection.GetValue(
+            "ConsumeErrorDelay",
+            TimeSpan.FromSeconds(1)),
+        kafkaSection.GetValue(
+            "CheckoutTimeout",
+            TimeSpan.FromMinutes(30)));
+
 var kafkaProducerOptions =
     new KafkaProducerOptions(
         kafkaSection.GetValue<string>(
@@ -73,10 +94,34 @@ builder.Services.AddDbContext<SagaDbContext>(
 builder.Services.AddScoped<
     IOutboxMessageRepository,
     OutboxMessageRepository>();
+builder.Services.AddScoped<
+    IInboxMessageRepository,
+    InboxMessageRepository>();
+builder.Services.AddScoped<
+    ICheckoutSagaRepository,
+    CheckoutSagaRepository>();
+builder.Services.AddScoped<
+    ISagaUnitOfWork,
+    SagaEfUnitOfWork>();
+builder.Services.AddScoped<
+    ISagaOutboxWriter,
+    SagaOutboxWriter>();
+builder.Services.AddScoped<IOrderCreatedMessageHandler>(
+    serviceProvider =>
+        new OrderCreatedMessageHandler(
+            serviceProvider.GetRequiredService<
+                ICheckoutSagaRepository>(),
+            serviceProvider.GetRequiredService<
+                ISagaUnitOfWork>(),
+            serviceProvider.GetRequiredService<
+                ISagaOutboxWriter>(),
+            orderCreatedConsumerOptions.CheckoutTimeout));
+builder.Services.AddScoped<OrderCreatedInboxProcessor>();
 builder.Services.AddScoped<OutboxPublisher>();
 
 builder.Services.AddSingleton(outboxPublisherOptions);
 builder.Services.AddSingleton(outboxPublisherWorkerOptions);
+builder.Services.AddSingleton(orderCreatedConsumerOptions);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(kafkaProducerOptions);
 
@@ -95,6 +140,8 @@ builder.Services.AddSingleton<
 
 builder.Services.AddHostedService<
     OutboxPublisherBackgroundService>();
+builder.Services.AddHostedService<
+    OrderCreatedConsumerBackgroundService>();
 
 var host = builder.Build();
 
