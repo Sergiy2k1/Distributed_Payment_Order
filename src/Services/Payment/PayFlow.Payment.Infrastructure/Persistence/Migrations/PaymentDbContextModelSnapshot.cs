@@ -192,6 +192,11 @@ partial class PaymentDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("integer")
                     .HasColumnName("schema_version");
 
+                entity.Property<string>("TraceParent")
+                    .HasMaxLength(256)
+                    .HasColumnType("character varying(256)")
+                    .HasColumnName("trace_parent");
+
                 entity.HasKey("OutboxMessageId");
 
                 entity.HasIndex("MessageId")
@@ -350,11 +355,6 @@ partial class PaymentDbContextModelSnapshot : ModelSnapshot
                     .HasMaxLength(32)
                     .HasColumnType("character varying(32)")
                     .HasColumnName("status");
-
-                entity.Property<string>("TraceParent")
-                    .HasMaxLength(256)
-                    .HasColumnType("character varying(256)")
-                    .HasColumnName("trace_parent");
 
                 entity.Property<DateTimeOffset>("UpdatedAtUtc")
                     .HasColumnType("timestamp with time zone")
