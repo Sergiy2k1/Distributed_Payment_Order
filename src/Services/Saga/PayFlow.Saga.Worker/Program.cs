@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PayFlow.Saga.Application.Abstractions;
 using PayFlow.Saga.Application.Checkout;
+using PayFlow.Saga.Application.Inventory;
 using PayFlow.Saga.Application.Messaging;
 using PayFlow.Saga.Application.Orders;
 using PayFlow.Saga.Infrastructure.Messaging;
@@ -122,8 +123,16 @@ builder.Services.AddScoped<IOrderCreatedMessageHandler>(
 builder.Services.AddScoped<
     IOrderProcessingStartedMessageHandler,
     OrderProcessingStartedMessageHandler>();
+builder.Services.AddScoped<
+    IInventoryReservedMessageHandler,
+    InventoryReservedMessageHandler>();
+builder.Services.AddScoped<
+    IInventoryReservationRejectedMessageHandler,
+    InventoryReservationRejectedMessageHandler>();
 builder.Services.AddScoped<OrderCreatedInboxProcessor>();
 builder.Services.AddScoped<OrderProcessingStartedInboxProcessor>();
+builder.Services.AddScoped<InventoryReservedInboxProcessor>();
+builder.Services.AddScoped<InventoryReservationRejectedInboxProcessor>();
 builder.Services.AddScoped<OutboxPublisher>();
 
 builder.Services.AddSingleton(outboxPublisherOptions);

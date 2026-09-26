@@ -79,7 +79,7 @@ public sealed class InventoryReservedInboxProcessor
 
     private static InboxMessageEntity CreateInboxMessage(
         ConsumedInventoryReservedMessage consumedMessage,
-        Application.Messaging.IntegrationMessageEnvelope envelope)
+        PayFlow.Saga.Application.Messaging.IntegrationMessageEnvelope envelope)
     {
         return new InboxMessageEntity
         {

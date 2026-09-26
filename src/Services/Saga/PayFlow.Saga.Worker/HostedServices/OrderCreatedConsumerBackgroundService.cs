@@ -50,7 +50,10 @@ public sealed partial class OrderCreatedConsumerBackgroundService
             .Build();
 
         consumer.Subscribe(
-            OrderCreatedKafkaMessageParser.Topic);
+            [
+                OrderCreatedKafkaMessageParser.Topic,
+                InventoryEventKafkaMessageParser.Topic
+            ]);
 
         LogConsumerStarted(
             _logger,
@@ -137,9 +140,11 @@ public sealed partial class OrderCreatedConsumerBackgroundService
         await using var scope =
             _scopeFactory.CreateAsyncScope();
 
-        return messageType switch
+        return (result.Topic, messageType) switch
         {
-            OrderCreatedKafkaMessageParser.MessageType =>
+            (
+                OrderCreatedKafkaMessageParser.Topic,
+                OrderCreatedKafkaMessageParser.MessageType) =>
                 await ProcessOrderCreatedAsync(
                         scope.ServiceProvider,
                         result,
@@ -147,7 +152,9 @@ public sealed partial class OrderCreatedConsumerBackgroundService
                         cancellationToken)
                     .ConfigureAwait(false),
 
-            OrderProcessingStartedKafkaMessageParser.MessageType =>
+            (
+                OrderProcessingStartedKafkaMessageParser.Topic,
+                OrderProcessingStartedKafkaMessageParser.MessageType) =>
                 await ProcessOrderProcessingStartedAsync(
                         scope.ServiceProvider,
                         result,
@@ -155,8 +162,28 @@ public sealed partial class OrderCreatedConsumerBackgroundService
                         cancellationToken)
                     .ConfigureAwait(false),
 
+            (
+                InventoryEventKafkaMessageParser.Topic,
+                InventoryEventKafkaMessageParser.InventoryReservedMessageType) =>
+                await ProcessInventoryReservedAsync(
+                        scope.ServiceProvider,
+                        result,
+                        receivedAtUtc,
+                        cancellationToken)
+                    .ConfigureAwait(false),
+
+            (
+                InventoryEventKafkaMessageParser.Topic,
+                InventoryEventKafkaMessageParser.InventoryRejectedMessageType) =>
+                await ProcessInventoryRejectedAsync(
+                        scope.ServiceProvider,
+                        result,
+                        receivedAtUtc,
+                        cancellationToken)
+                    .ConfigureAwait(false),
+
             _ => throw new InvalidDataException(
-                $"Unsupported orders.events message type '{messageType}'.")
+                $"Unsupported Saga event '{messageType}' from topic '{result.Topic}'.")
         };
     }
 
@@ -200,6 +227,50 @@ public sealed partial class OrderCreatedConsumerBackgroundService
 
         return await processor
             .ProcessAsync(
+                consumedMessage,
+                _timeProvider.GetUtcNow(),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<bool> ProcessInventoryReservedAsync(
+        IServiceProvider serviceProvider,
+        ConsumeResult<string, string> result,
+        DateTimeOffset receivedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var consumedMessage =
+            InventoryEventKafkaMessageParser.ParseReserved(
+                result,
+                receivedAtUtc);
+
+        var processor =
+            serviceProvider.GetRequiredService<
+                InventoryReservedInboxProcessor>();
+
+        return await processor.ProcessAsync(
+                consumedMessage,
+                _timeProvider.GetUtcNow(),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<bool> ProcessInventoryRejectedAsync(
+        IServiceProvider serviceProvider,
+        ConsumeResult<string, string> result,
+        DateTimeOffset receivedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var consumedMessage =
+            InventoryEventKafkaMessageParser.ParseRejected(
+                result,
+                receivedAtUtc);
+
+        var processor =
+            serviceProvider.GetRequiredService<
+                InventoryReservationRejectedInboxProcessor>();
+
+        return await processor.ProcessAsync(
                 consumedMessage,
                 _timeProvider.GetUtcNow(),
                 cancellationToken)
@@ -266,7 +337,7 @@ public sealed partial class OrderCreatedConsumerBackgroundService
     [LoggerMessage(
         EventId = 1200,
         Level = LogLevel.Information,
-        Message = "Saga orders.events consumer started. Topic: {Topic}, Group: {ConsumerGroup}.")]
+        Message = "Saga event consumer started. Topic: {Topic}, Group: {ConsumerGroup}.")]
     private static partial void LogConsumerStarted(
         ILogger logger,
         string topic,
@@ -306,7 +377,7 @@ public sealed partial class OrderCreatedConsumerBackgroundService
     [LoggerMessage(
         EventId = 1204,
         Level = LogLevel.Information,
-        Message = "Saga orders.events consumer stopped.")]
+        Message = "Saga event consumer stopped.")]
     private static partial void LogConsumerStopped(
         ILogger logger);
 }
