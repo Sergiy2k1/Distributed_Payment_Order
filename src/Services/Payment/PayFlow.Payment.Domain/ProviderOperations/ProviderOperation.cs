@@ -85,11 +85,9 @@ public sealed class ProviderOperation
         ArgumentOutOfRangeException.ThrowIfNegative(
             version);
 
-        if (updatedAtUtc < createdAtUtc)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(updatedAtUtc));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            updatedAtUtc,
+            createdAtUtc);
 
         if (lastAttemptAtUtc is { } lastAttempt)
         {
@@ -132,11 +130,9 @@ public sealed class ProviderOperation
                 $"Terminal provider operation cannot begin another attempt from {Status}.");
         }
 
-        if (attemptedAtUtc < UpdatedAtUtc)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(attemptedAtUtc));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            attemptedAtUtc,
+            UpdatedAtUtc);
 
         checked
         {
@@ -233,11 +229,9 @@ public sealed class ProviderOperation
         EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
         EnsureUtc(nextAttemptAtUtc, nameof(nextAttemptAtUtc));
 
-        if (nextAttemptAtUtc <= occurredAtUtc)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(nextAttemptAtUtc));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            nextAttemptAtUtc,
+            occurredAtUtc);
 
         if (Status != ProviderOperationStatus.Processing)
         {
