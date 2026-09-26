@@ -70,6 +70,97 @@ partial class OrderDbContextModelSnapshot : ModelSnapshot
             });
 
         modelBuilder.Entity(
+            "PayFlow.Order.Infrastructure.Persistence.Entities.InboxMessageEntity",
+            entity =>
+            {
+                entity.Property<string>("ConsumerName")
+                    .HasMaxLength(128)
+                    .HasColumnType("character varying(128)")
+                    .HasColumnName("consumer_name");
+
+                entity.Property<Guid>("MessageId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("message_id");
+
+                entity.Property<Guid>("AggregateId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("aggregate_id");
+
+                entity.Property<Guid?>("CausationId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("causation_id");
+
+                entity.Property<Guid>("CorrelationId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("correlation_id");
+
+                entity.Property<string>("MessageType")
+                    .IsRequired()
+                    .HasMaxLength(256)
+                    .HasColumnType("character varying(256)")
+                    .HasColumnName("message_type");
+
+                entity.Property<DateTimeOffset>("OccurredAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("occurred_at_utc");
+
+                entity.Property<DateTimeOffset?>("ProcessedAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("processed_at_utc");
+
+                entity.Property<DateTimeOffset>("ReceivedAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("received_at_utc");
+
+                entity.Property<int>("SchemaVersion")
+                    .HasColumnType("integer")
+                    .HasColumnName("schema_version");
+
+                entity.Property<long>("SourceOffset")
+                    .HasColumnType("bigint")
+                    .HasColumnName("source_offset");
+
+                entity.Property<int>("SourcePartition")
+                    .HasColumnType("integer")
+                    .HasColumnName("source_partition");
+
+                entity.Property<string>("SourceTopic")
+                    .IsRequired()
+                    .HasMaxLength(256)
+                    .HasColumnType("character varying(256)")
+                    .HasColumnName("source_topic");
+
+                entity.HasKey(
+                    "ConsumerName",
+                    "MessageId");
+
+                entity.HasIndex("ProcessedAtUtc");
+
+                entity.HasIndex(
+                        "SourceTopic",
+                        "SourcePartition",
+                        "SourceOffset")
+                    .HasDatabaseName("IX_inbox_messages_source_position");
+
+                entity.ToTable(
+                    "inbox_messages",
+                    table =>
+                    {
+                        table.HasCheckConstraint(
+                            "ck_inbox_messages_schema_version_positive",
+                            "schema_version > 0");
+
+                        table.HasCheckConstraint(
+                            "ck_inbox_messages_source_offset_non_negative",
+                            "source_offset >= 0");
+
+                        table.HasCheckConstraint(
+                            "ck_inbox_messages_source_partition_non_negative",
+                            "source_partition >= 0");
+                    });
+            });
+
+        modelBuilder.Entity(
             "PayFlow.Order.Infrastructure.Persistence.Entities.OutboxMessageEntity",
             entity =>
             {

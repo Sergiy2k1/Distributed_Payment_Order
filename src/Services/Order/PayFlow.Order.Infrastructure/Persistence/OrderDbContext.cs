@@ -20,6 +20,9 @@ public sealed class OrderDbContext : DbContext
     public DbSet<OutboxMessageEntity> OutboxMessages =>
         Set<OutboxMessageEntity>();
 
+    public DbSet<InboxMessageEntity> InboxMessages =>
+        Set<InboxMessageEntity>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(OrderDbContext).Assembly);
