@@ -9,6 +9,20 @@ namespace PayFlow.Payment.Infrastructure.Persistence.Migrations;
 [Migration("20260927000500_AddPaymentInboxOutbox")]
 public partial class AddPaymentInboxOutbox : Migration
 {
+    private static readonly string[] InboxSourcePositionIndexColumns =
+    [
+        "source_topic",
+        "source_partition",
+        "source_offset"
+    ];
+
+    private static readonly string[] OutboxPublishPendingIndexColumns =
+    [
+        "published_at_utc",
+        "next_attempt_at_utc",
+        "created_at_utc"
+    ];
+
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.CreateTable(
@@ -79,7 +93,7 @@ public partial class AddPaymentInboxOutbox : Migration
         migrationBuilder.CreateIndex(
             name: "IX_inbox_messages_source_position",
             table: "inbox_messages",
-            columns: new[] { "source_topic", "source_partition", "source_offset" });
+            columns: InboxSourcePositionIndexColumns);
 
         migrationBuilder.CreateIndex(
             name: "IX_outbox_messages_message_id",
@@ -90,7 +104,7 @@ public partial class AddPaymentInboxOutbox : Migration
         migrationBuilder.CreateIndex(
             name: "IX_outbox_messages_publish_pending",
             table: "outbox_messages",
-            columns: new[] { "published_at_utc", "next_attempt_at_utc", "created_at_utc" },
+            columns: OutboxPublishPendingIndexColumns,
             filter: "published_at_utc IS NULL");
     }
 

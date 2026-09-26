@@ -9,6 +9,18 @@ namespace PayFlow.Payment.Infrastructure.Persistence.Migrations;
 [Migration("20260926233000_InitialPaymentPersistence")]
 public partial class InitialPaymentPersistence : Migration
 {
+    private static readonly string[] BusinessIdentityIndexColumns =
+    [
+        "operation_type",
+        "business_operation_id"
+    ];
+
+    private static readonly string[] ProviderReconciliationIndexColumns =
+    [
+        "status",
+        "next_attempt_at_utc"
+    ];
+
     protected override void Up(MigrationBuilder migrationBuilder)
     {
         migrationBuilder.CreateTable(
@@ -102,7 +114,7 @@ public partial class InitialPaymentPersistence : Migration
         migrationBuilder.CreateIndex(
             name: "IX_ledger_transactions_business_identity",
             table: "ledger_transactions",
-            columns: new[] { "operation_type", "business_operation_id" },
+            columns: BusinessIdentityIndexColumns,
             unique: true);
 
         migrationBuilder.CreateIndex(
@@ -113,7 +125,7 @@ public partial class InitialPaymentPersistence : Migration
         migrationBuilder.CreateIndex(
             name: "IX_provider_operations_business_identity",
             table: "provider_operations",
-            columns: new[] { "operation_type", "business_operation_id" },
+            columns: BusinessIdentityIndexColumns,
             unique: true);
 
         migrationBuilder.CreateIndex(
@@ -125,7 +137,7 @@ public partial class InitialPaymentPersistence : Migration
         migrationBuilder.CreateIndex(
             name: "IX_provider_operations_reconciliation",
             table: "provider_operations",
-            columns: new[] { "status", "next_attempt_at_utc" });
+            columns: ProviderReconciliationIndexColumns);
     }
 
     protected override void Down(MigrationBuilder migrationBuilder)
