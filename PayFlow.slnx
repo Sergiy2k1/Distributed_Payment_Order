@@ -8,4 +8,5 @@
   <Project Path="tests/Integration/PayFlow.Order.IntegrationTests/PayFlow.Order.IntegrationTests.csproj" />
   <Project Path="tests/Integration/PayFlow.Saga.IntegrationTests/PayFlow.Saga.IntegrationTests.csproj" />
   <Project Path="tests/Unit/PayFlow.Order.UnitTests/PayFlow.Order.UnitTests.csproj" />
+  <Project Path="tests/Unit/PayFlow.Saga.UnitTests/PayFlow.Saga.UnitTests.csproj" />
 </Solution>
