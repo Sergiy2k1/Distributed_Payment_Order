@@ -81,6 +81,9 @@ public sealed class CheckoutSagaEntityConfiguration
         builder.Property(saga => saga.ReservationExpiresAtUtc)
             .HasColumnName("reservation_expires_at_utc");
 
+        builder.Property(saga => saga.PaymentId)
+            .HasColumnName("payment_id");
+
         builder.Property(saga => saga.RetryCount)
             .HasColumnName("retry_count")
             .IsRequired();

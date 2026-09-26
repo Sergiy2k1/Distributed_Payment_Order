@@ -41,6 +41,7 @@ public static class CheckoutSagaEntityMapper
             entity.DeadlineAtUtc,
             entity.ReservationId,
             entity.ReservationExpiresAtUtc,
+            entity.PaymentId,
             entity.RetryCount,
             entity.NextAttemptAtUtc,
             entity.LastTechnicalErrorCode,
@@ -66,6 +67,7 @@ public static class CheckoutSagaEntityMapper
             ReservationId = saga.ReservationId,
             ReservationExpiresAtUtc =
                 saga.ReservationExpiresAtUtc,
+            PaymentId = saga.PaymentId,
             RetryCount = saga.RetryCount,
             NextAttemptAtUtc = saga.NextAttemptAtUtc,
             LastTechnicalErrorCode =

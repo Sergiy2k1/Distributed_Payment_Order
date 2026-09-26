@@ -37,6 +37,7 @@ public sealed class CheckoutSagaTests
         Assert.Null(saga.NextAttemptAtUtc);
         Assert.Null(saga.ReservationId);
         Assert.Null(saga.ReservationExpiresAtUtc);
+        Assert.Null(saga.PaymentId);
         Assert.Equal(
             DeadlineAtUtc,
             saga.DeadlineAtUtc);
@@ -159,6 +160,66 @@ public sealed class CheckoutSagaTests
             DeadlineAtUtc);
 
         Assert.Equal(1, saga.Version);
+    }
+
+    [Fact]
+    public void ConfirmInventoryReservedMovesSagaToWaitingForPayment()
+    {
+        var saga = CheckoutSaga.Start(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CreateItems(),
+            "USD",
+            35m,
+            StartedAtUtc,
+            DeadlineAtUtc);
+        var reservationId = Guid.NewGuid();
+        var paymentId = Guid.NewGuid();
+
+        saga.BeginInventoryReservation(
+            reservationId,
+            StartedAtUtc.AddSeconds(1),
+            DeadlineAtUtc);
+
+        saga.ConfirmInventoryReserved(
+            reservationId,
+            paymentId,
+            StartedAtUtc.AddSeconds(2));
+
+        Assert.Equal(
+            CheckoutSagaStatus.WaitingForPayment,
+            saga.Status);
+        Assert.Equal(paymentId, saga.PaymentId);
+        Assert.Equal(2, saga.Version);
+    }
+
+    [Fact]
+    public void RejectInventoryReservationMovesSagaToOrderCancellation()
+    {
+        var saga = CheckoutSaga.Start(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CreateItems(),
+            "USD",
+            35m,
+            StartedAtUtc,
+            DeadlineAtUtc);
+        var reservationId = Guid.NewGuid();
+
+        saga.BeginInventoryReservation(
+            reservationId,
+            StartedAtUtc.AddSeconds(1),
+            DeadlineAtUtc);
+
+        saga.RejectInventoryReservation(
+            reservationId,
+            StartedAtUtc.AddSeconds(2));
+
+        Assert.Equal(
+            CheckoutSagaStatus.WaitingForOrderCancellation,
+            saga.Status);
+        Assert.Null(saga.PaymentId);
+        Assert.Equal(2, saga.Version);
     }
 
     private static CheckoutSagaItem[] CreateItems()

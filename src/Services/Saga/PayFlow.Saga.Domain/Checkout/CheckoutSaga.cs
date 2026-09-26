@@ -24,6 +24,7 @@ public sealed class CheckoutSaga
         DeadlineAtUtc = deadlineAtUtc;
         ReservationId = null;
         ReservationExpiresAtUtc = null;
+        PaymentId = null;
         RetryCount = 0;
         NextAttemptAtUtc = null;
         LastTechnicalErrorCode = null;
@@ -42,6 +43,7 @@ public sealed class CheckoutSaga
     public DateTimeOffset DeadlineAtUtc { get; }
     public Guid? ReservationId { get; private set; }
     public DateTimeOffset? ReservationExpiresAtUtc { get; private set; }
+    public Guid? PaymentId { get; private set; }
     public int RetryCount { get; private set; }
     public DateTimeOffset? NextAttemptAtUtc { get; private set; }
     public string? LastTechnicalErrorCode { get; private set; }
@@ -134,6 +136,7 @@ public sealed class CheckoutSaga
         DateTimeOffset deadlineAtUtc,
         Guid? reservationId,
         DateTimeOffset? reservationExpiresAtUtc,
+        Guid? paymentId,
         int retryCount,
         DateTimeOffset? nextAttemptAtUtc,
         string? lastTechnicalErrorCode,
@@ -193,6 +196,7 @@ public sealed class CheckoutSaga
         saga.ReservationId = reservationId;
         saga.ReservationExpiresAtUtc =
             reservationExpiresAtUtc;
+        saga.PaymentId = paymentId;
         saga.RetryCount = retryCount;
         saga.NextAttemptAtUtc = nextAttemptAtUtc;
         saga.LastTechnicalErrorCode =
@@ -263,6 +267,97 @@ public sealed class CheckoutSaga
         ReservationId = reservationId;
         ReservationExpiresAtUtc = expiresAtUtc;
         Status = CheckoutSagaStatus.WaitingForInventory;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
+
+    public void ConfirmInventoryReserved(
+        Guid reservationId,
+        Guid paymentId,
+        DateTimeOffset occurredAtUtc)
+    {
+        ValidateIdentity(reservationId, nameof(reservationId));
+        ValidateIdentity(paymentId, nameof(paymentId));
+        EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+
+        if (Status == CheckoutSagaStatus.WaitingForPayment)
+        {
+            if (ReservationId == reservationId
+                && PaymentId == paymentId)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException(
+                "Inventory reservation was already confirmed with different workflow identities.");
+        }
+
+        if (Status != CheckoutSagaStatus.WaitingForInventory)
+        {
+            throw new InvalidOperationException(
+                $"Checkout Saga cannot confirm inventory reservation from {Status}.");
+        }
+
+        if (ReservationId != reservationId)
+        {
+            throw new InvalidOperationException(
+                "InventoryReserved reservation identity does not match the persisted Saga reservation.");
+        }
+
+        if (occurredAtUtc < UpdatedAtUtc)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(occurredAtUtc),
+                occurredAtUtc,
+                "Saga transition timestamp cannot be earlier than its current update timestamp.");
+        }
+
+        PaymentId = paymentId;
+        Status = CheckoutSagaStatus.WaitingForPayment;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
+    public void RejectInventoryReservation(
+        Guid reservationId,
+        DateTimeOffset occurredAtUtc)
+    {
+        ValidateIdentity(reservationId, nameof(reservationId));
+        EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+
+        if (Status == CheckoutSagaStatus.WaitingForOrderCancellation)
+        {
+            if (ReservationId == reservationId)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException(
+                "Inventory rejection references a different reservation.");
+        }
+
+        if (Status != CheckoutSagaStatus.WaitingForInventory)
+        {
+            throw new InvalidOperationException(
+                $"Checkout Saga cannot reject inventory reservation from {Status}.");
+        }
+
+        if (ReservationId != reservationId)
+        {
+            throw new InvalidOperationException(
+                "InventoryReservationRejected reservation identity does not match the persisted Saga reservation.");
+        }
+
+        if (occurredAtUtc < UpdatedAtUtc)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(occurredAtUtc),
+                occurredAtUtc,
+                "Saga transition timestamp cannot be earlier than its current update timestamp.");
+        }
+
+        Status = CheckoutSagaStatus.WaitingForOrderCancellation;
         UpdatedAtUtc = occurredAtUtc;
         Version++;
     }

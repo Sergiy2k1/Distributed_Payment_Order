@@ -154,6 +154,10 @@ partial class SagaDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("next_attempt_at_utc");
 
+                entity.Property<Guid?>("PaymentId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("payment_id");
+
                 entity.Property<Guid?>("ReservationId")
                     .HasColumnType("uuid")
                     .HasColumnName("reservation_id");

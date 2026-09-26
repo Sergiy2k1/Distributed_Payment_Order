@@ -12,6 +12,7 @@ public sealed class CheckoutSagaEntity
     public DateTimeOffset DeadlineAtUtc { get; set; }
     public Guid? ReservationId { get; set; }
     public DateTimeOffset? ReservationExpiresAtUtc { get; set; }
+    public Guid? PaymentId { get; set; }
     public int RetryCount { get; set; }
     public DateTimeOffset? NextAttemptAtUtc { get; set; }
     public string? LastTechnicalErrorCode { get; set; }

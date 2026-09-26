@@ -70,6 +70,7 @@ public sealed class CheckoutSagaRepository
         entity.ReservationId = saga.ReservationId;
         entity.ReservationExpiresAtUtc =
             saga.ReservationExpiresAtUtc;
+        entity.PaymentId = saga.PaymentId;
         entity.RetryCount = saga.RetryCount;
         entity.NextAttemptAtUtc = saga.NextAttemptAtUtc;
         entity.LastTechnicalErrorCode =
