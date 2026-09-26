@@ -116,6 +116,173 @@ partial class SagaDbContextModelSnapshot : ModelSnapshot
                             "source_partition >= 0");
                     });
             });
+        modelBuilder.Entity(
+            "PayFlow.Saga.Infrastructure.Persistence.Entities.CheckoutSagaEntity",
+            entity =>
+            {
+                entity.Property<Guid>("OrderId")
+                    .ValueGeneratedNever()
+                    .HasColumnType("uuid")
+                    .HasColumnName("order_id");
+
+                entity.Property<string>("Currency")
+                    .IsRequired()
+                    .IsFixedLength()
+                    .HasMaxLength(3)
+                    .HasColumnType("character(3)")
+                    .HasColumnName("currency");
+
+                entity.Property<Guid>("CustomerId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("customer_id");
+
+                entity.Property<DateTimeOffset>("DeadlineAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("deadline_at_utc");
+
+                entity.Property<string>("LastTechnicalErrorCode")
+                    .HasMaxLength(128)
+                    .HasColumnType("character varying(128)")
+                    .HasColumnName("last_technical_error_code");
+
+                entity.Property<string>("LastTechnicalErrorMessage")
+                    .HasMaxLength(2048)
+                    .HasColumnType("character varying(2048)")
+                    .HasColumnName("last_technical_error_message");
+
+                entity.Property<DateTimeOffset?>("NextAttemptAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("next_attempt_at_utc");
+
+                entity.Property<int>("RetryCount")
+                    .HasColumnType("integer")
+                    .HasColumnName("retry_count");
+
+                entity.Property<DateTimeOffset>("StartedAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("started_at_utc");
+
+                entity.Property<string>("Status")
+                    .IsRequired()
+                    .HasMaxLength(64)
+                    .HasColumnType("character varying(64)")
+                    .HasColumnName("status");
+
+                entity.Property<decimal>("TotalAmount")
+                    .HasPrecision(19, 4)
+                    .HasColumnType("numeric(19,4)")
+                    .HasColumnName("total_amount");
+
+                entity.Property<DateTimeOffset>("UpdatedAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("updated_at_utc");
+
+                entity.Property<long>("Version")
+                    .IsConcurrencyToken()
+                    .HasColumnType("bigint")
+                    .HasColumnName("version");
+
+                entity.HasKey("OrderId");
+
+                entity.HasIndex(
+                        "Status",
+                        "NextAttemptAtUtc")
+                    .HasDatabaseName(
+                        "IX_checkout_sagas_status_next_attempt_at_utc");
+
+                entity.ToTable(
+                    "checkout_sagas",
+                    table =>
+                    {
+                        table.HasCheckConstraint(
+                            "ck_checkout_sagas_deadline_after_start",
+                            "deadline_at_utc > started_at_utc");
+
+                        table.HasCheckConstraint(
+                            "ck_checkout_sagas_retry_count_non_negative",
+                            "retry_count >= 0");
+
+                        table.HasCheckConstraint(
+                            "ck_checkout_sagas_total_amount_positive",
+                            "total_amount > 0");
+                    });
+            });
+
+        modelBuilder.Entity(
+            "PayFlow.Saga.Infrastructure.Persistence.Entities.CheckoutSagaItemEntity",
+            entity =>
+            {
+                entity.Property<Guid>("OrderId")
+                    .ValueGeneratedNever()
+                    .HasColumnType("uuid")
+                    .HasColumnName("order_id");
+
+                entity.Property<int>("Position")
+                    .ValueGeneratedNever()
+                    .HasColumnType("integer")
+                    .HasColumnName("position");
+
+                entity.Property<string>("Currency")
+                    .IsRequired()
+                    .IsFixedLength()
+                    .HasMaxLength(3)
+                    .HasColumnType("character(3)")
+                    .HasColumnName("currency");
+
+                entity.Property<int>("Quantity")
+                    .HasColumnType("integer")
+                    .HasColumnName("quantity");
+
+                entity.Property<string>("SkuId")
+                    .IsRequired()
+                    .HasMaxLength(128)
+                    .HasColumnType("character varying(128)")
+                    .HasColumnName("sku_id");
+
+                entity.Property<decimal>("UnitPrice")
+                    .HasPrecision(19, 4)
+                    .HasColumnType("numeric(19,4)")
+                    .HasColumnName("unit_price");
+
+                entity.HasKey(
+                    "OrderId",
+                    "Position");
+
+                entity.ToTable(
+                    "checkout_saga_items",
+                    table =>
+                    {
+                        table.HasCheckConstraint(
+                            "ck_checkout_saga_items_quantity_positive",
+                            "quantity > 0");
+
+                        table.HasCheckConstraint(
+                            "ck_checkout_saga_items_unit_price_positive",
+                            "unit_price > 0");
+                    });
+            });
+
+        modelBuilder.Entity(
+            "PayFlow.Saga.Infrastructure.Persistence.Entities.CheckoutSagaItemEntity",
+            entity =>
+            {
+                entity.HasOne(
+                        "PayFlow.Saga.Infrastructure.Persistence.Entities.CheckoutSagaEntity",
+                        "Saga")
+                    .WithMany("Items")
+                    .HasForeignKey("OrderId")
+                    .OnDelete(DeleteBehavior.Cascade)
+                    .IsRequired();
+
+                entity.Navigation("Saga");
+            });
+
+        modelBuilder.Entity(
+            "PayFlow.Saga.Infrastructure.Persistence.Entities.CheckoutSagaEntity",
+            entity =>
+            {
+                entity.Navigation("Items");
+            });
 #pragma warning restore 612, 618
     }
 }
