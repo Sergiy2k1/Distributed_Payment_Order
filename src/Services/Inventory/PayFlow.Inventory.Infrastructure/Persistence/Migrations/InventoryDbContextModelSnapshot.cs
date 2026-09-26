@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PayFlow.Inventory.Infrastructure.Persistence;
 
 #nullable disable
@@ -25,10 +26,8 @@ partial class InventoryDbContextModelSnapshot
                 "Relational:MaxIdentifierLength",
                 63);
 
-        Npgsql.EntityFrameworkCore.PostgreSQL.Metadata
-            .NpgsqlModelBuilderExtensions
-            .UseIdentityByDefaultColumns(
-                modelBuilder);
+        NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(
+            modelBuilder);
 
         modelBuilder.Entity(
             "PayFlow.Inventory.Infrastructure.Persistence.Entities.InventoryReservationEntity",
