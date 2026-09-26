@@ -97,6 +97,64 @@ public sealed class InventoryReservation
             expiresAtUtc);
     }
 
+    public static InventoryReservation Rehydrate(
+        Guid reservationId,
+        Guid orderId,
+        IEnumerable<InventoryReservationItem> items,
+        InventoryReservationStatus status,
+        DateTimeOffset createdAtUtc,
+        DateTimeOffset updatedAtUtc,
+        DateTimeOffset expiresAtUtc,
+        string? rejectionReasonCode,
+        long version)
+    {
+        var reservation = Create(
+            reservationId,
+            orderId,
+            items,
+            createdAtUtc,
+            expiresAtUtc);
+
+        EnsureUtc(
+            updatedAtUtc,
+            nameof(updatedAtUtc));
+
+        if (updatedAtUtc < createdAtUtc)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(updatedAtUtc),
+                updatedAtUtc,
+                "Reservation update timestamp cannot be earlier than creation.");
+        }
+
+        if (version < 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(version),
+                version,
+                "Reservation version cannot be negative.");
+        }
+
+        if (status == InventoryReservationStatus.Rejected)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(
+                rejectionReasonCode);
+        }
+        else if (rejectionReasonCode is not null)
+        {
+            throw new InvalidOperationException(
+                "Only rejected reservations may contain a rejection reason.");
+        }
+
+        reservation.Status = status;
+        reservation.UpdatedAtUtc = updatedAtUtc;
+        reservation.RejectionReasonCode =
+            rejectionReasonCode;
+        reservation.Version = version;
+
+        return reservation;
+    }
+
     public void MarkReserved(
         DateTimeOffset occurredAtUtc)
     {
