@@ -28,6 +28,9 @@ public sealed class OrderCreatedMessageHandlerTests(
     private static readonly TimeSpan CheckoutTimeout =
         TimeSpan.FromMinutes(30);
 
+    private static readonly JsonSerializerOptions SerializerOptions =
+        new(JsonSerializerDefaults.Web);
+
     [Fact]
     public async Task ProcessingOrderCreatedPersistsSagaAndInboxAtomically()
     {
@@ -184,8 +187,7 @@ public sealed class OrderCreatedMessageHandlerTests(
         var payload =
             JsonSerializer.Deserialize<BeginOrderProcessingV1>(
                 outboxMessage.Payload,
-                new JsonSerializerOptions(
-                    JsonSerializerDefaults.Web));
+                SerializerOptions);
 
         Assert.NotNull(payload);
         Assert.Equal(
