@@ -1,6 +1,7 @@
 using PayFlow.Payment.Application.Abstractions;
 using PayFlow.Payment.Application.Events;
 using PayFlow.Payment.Domain.Ledger;
+using PayFlow.Payment.Domain.Payments;
 using PayFlow.Payment.Domain.ProviderOperations;
 using PaymentAggregate = PayFlow.Payment.Domain.Payments.Payment;
 
@@ -63,6 +64,14 @@ public sealed class ProviderCaptureOutcomeFinalizer
             ?? throw new InvalidOperationException(
                 $"Capture operation for Payment '{context.PaymentId:D}' does not exist.");
 
+        if (IsAlreadyApplied(
+                payment,
+                operation,
+                result))
+        {
+            return;
+        }
+
         switch (result.Outcome)
         {
             case PaymentProviderCaptureOutcome.Succeeded:
@@ -108,6 +117,54 @@ public sealed class ProviderCaptureOutcomeFinalizer
         await _unitOfWork.SaveChangesAsync(
             cancellationToken)
             .ConfigureAwait(false);
+    }
+
+    private static bool IsAlreadyApplied(
+        PaymentAggregate payment,
+        ProviderOperation operation,
+        PaymentProviderCaptureResult result)
+    {
+        return result.Outcome switch
+        {
+            PaymentProviderCaptureOutcome.Succeeded
+                when operation.Status
+                    == ProviderOperationStatus.Succeeded
+                && payment.Status
+                    == PaymentStatus.Captured
+                && string.Equals(
+                    operation.ProviderReference,
+                    result.ProviderReference,
+                    StringComparison.Ordinal) =>
+                true,
+
+            PaymentProviderCaptureOutcome.DefinitivelyFailed
+                when operation.Status
+                    == ProviderOperationStatus.DefinitivelyFailed
+                && payment.Status
+                    == PaymentStatus.Failed
+                && string.Equals(
+                    operation.LastErrorCode,
+                    result.ErrorCode,
+                    StringComparison.Ordinal)
+                && string.Equals(
+                    payment.FailureReasonCode,
+                    result.ErrorCode,
+                    StringComparison.Ordinal) =>
+                true,
+
+            PaymentProviderCaptureOutcome.Ambiguous
+                when operation.Status
+                    == ProviderOperationStatus.Ambiguous
+                && payment.Status
+                    == PaymentStatus.Processing
+                && string.Equals(
+                    operation.LastErrorCode,
+                    result.ErrorCode,
+                    StringComparison.Ordinal) =>
+                true,
+
+            _ => false
+        };
     }
 
     private async Task ApplySuccessAsync(
