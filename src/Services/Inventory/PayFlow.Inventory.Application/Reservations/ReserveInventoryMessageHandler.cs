@@ -1,5 +1,6 @@
 using PayFlow.Inventory.Application.Abstractions;
 using PayFlow.Inventory.Domain.Reservations;
+using PayFlow.Inventory.Domain.Stock;
 
 namespace PayFlow.Inventory.Application.Reservations;
 
@@ -160,7 +161,7 @@ public sealed class ReserveInventoryMessageHandler
 
     private static string? DetermineRejectionReason(
         IReadOnlyCollection<InventoryReservationItem> requestedItems,
-        IReadOnlyDictionary<string, Domain.Stock.StockItem> stockBySku)
+        IReadOnlyDictionary<string, StockItem> stockBySku)
     {
         if (requestedItems.Any(
                 item => !stockBySku.ContainsKey(item.SkuId)))
