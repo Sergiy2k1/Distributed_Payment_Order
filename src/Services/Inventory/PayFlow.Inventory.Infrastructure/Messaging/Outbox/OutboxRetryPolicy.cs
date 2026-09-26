@@ -9,17 +9,13 @@ public sealed class OutboxRetryPolicy
         TimeSpan baseDelay,
         TimeSpan maxDelay)
     {
-        if (baseDelay <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(baseDelay));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            baseDelay,
+            TimeSpan.Zero);
 
-        if (maxDelay < baseDelay)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(maxDelay));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            maxDelay,
+            baseDelay);
 
         _baseDelay = baseDelay;
         _maxDelay = maxDelay;
@@ -27,11 +23,8 @@ public sealed class OutboxRetryPolicy
 
     public TimeSpan GetDelay(int previousAttemptCount)
     {
-        if (previousAttemptCount < 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(previousAttemptCount));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegative(
+            previousAttemptCount);
 
         var ticks = _baseDelay.Ticks;
 

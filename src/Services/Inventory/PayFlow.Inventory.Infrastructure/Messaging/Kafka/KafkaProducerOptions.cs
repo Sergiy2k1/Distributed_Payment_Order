@@ -12,11 +12,9 @@ public sealed class KafkaProducerOptions
         ArgumentException.ThrowIfNullOrWhiteSpace(
             clientId);
 
-        if (messageTimeout <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(messageTimeout));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            messageTimeout,
+            TimeSpan.Zero);
 
         BootstrapServers = bootstrapServers;
         ClientId = clientId;

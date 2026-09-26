@@ -12,11 +12,9 @@ public sealed class InventoryWorkerOptions
         ArgumentException.ThrowIfNullOrWhiteSpace(
             consumerGroup);
 
-        if (consumeErrorDelay <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(consumeErrorDelay));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            consumeErrorDelay,
+            TimeSpan.Zero);
 
         BootstrapServers = bootstrapServers;
         ConsumerGroup = consumerGroup;

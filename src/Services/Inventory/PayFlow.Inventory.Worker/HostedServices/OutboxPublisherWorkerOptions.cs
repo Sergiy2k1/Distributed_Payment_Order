@@ -6,11 +6,9 @@ public sealed class OutboxPublisherWorkerOptions
         bool enabled,
         TimeSpan pollInterval)
     {
-        if (pollInterval <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(pollInterval));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            pollInterval,
+            TimeSpan.Zero);
 
         Enabled = enabled;
         PollInterval = pollInterval;

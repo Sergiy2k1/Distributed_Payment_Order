@@ -8,29 +8,20 @@ public sealed class OutboxPublisherOptions
         TimeSpan baseRetryDelay,
         TimeSpan maxRetryDelay)
     {
-        if (batchSize <= 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(batchSize));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(
+            batchSize);
 
-        if (leaseDuration <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(leaseDuration));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            leaseDuration,
+            TimeSpan.Zero);
 
-        if (baseRetryDelay <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(baseRetryDelay));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            baseRetryDelay,
+            TimeSpan.Zero);
 
-        if (maxRetryDelay < baseRetryDelay)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(maxRetryDelay));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            maxRetryDelay,
+            baseRetryDelay);
 
         BatchSize = batchSize;
         LeaseDuration = leaseDuration;

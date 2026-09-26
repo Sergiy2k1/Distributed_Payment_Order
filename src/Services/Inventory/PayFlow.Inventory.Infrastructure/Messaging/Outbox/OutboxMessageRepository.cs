@@ -24,17 +24,12 @@ public sealed class OutboxMessageRepository
     {
         EnsureUtc(nowUtc, nameof(nowUtc));
 
-        if (leaseDuration <= TimeSpan.Zero)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(leaseDuration));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            leaseDuration,
+            TimeSpan.Zero);
 
-        if (batchSize <= 0)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(batchSize));
-        }
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(
+            batchSize);
 
         EnsureIdentity(claimToken, nameof(claimToken));
 
@@ -139,11 +134,9 @@ public sealed class OutboxMessageRepository
         EnsureUtc(nextAttemptAtUtc, nameof(nextAttemptAtUtc));
         ArgumentException.ThrowIfNullOrWhiteSpace(errorCode);
 
-        if (nextAttemptAtUtc <= failedAtUtc)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(nextAttemptAtUtc));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            nextAttemptAtUtc,
+            failedAtUtc);
 
         var normalizedErrorCode =
             errorCode.Length <= 128
