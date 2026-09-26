@@ -92,6 +92,44 @@ partial class InventoryDbContextModelSnapshot
             });
 
         modelBuilder.Entity(
+            "PayFlow.Inventory.Infrastructure.Persistence.Entities.StockItemEntity",
+            entity =>
+            {
+                entity.Property<string>("SkuId")
+                    .HasMaxLength(128)
+                    .HasColumnType("character varying(128)")
+                    .HasColumnName("sku_id");
+
+                entity.Property<int>("OnHand")
+                    .HasColumnType("integer")
+                    .HasColumnName("on_hand");
+
+                entity.Property<int>("Reserved")
+                    .HasColumnType("integer")
+                    .HasColumnName("reserved");
+
+                entity.Property<long>("Version")
+                    .IsConcurrencyToken()
+                    .HasColumnType("bigint")
+                    .HasColumnName("version");
+
+                entity.HasKey("SkuId");
+
+                entity.ToTable(
+                    "inventory_stock",
+                    table =>
+                    {
+                        table.HasCheckConstraint(
+                            "ck_inventory_stock_on_hand_non_negative",
+                            "on_hand >= 0");
+
+                        table.HasCheckConstraint(
+                            "ck_inventory_stock_reserved_range",
+                            "reserved >= 0 AND reserved <= on_hand");
+                    });
+            });
+
+        modelBuilder.Entity(
             "PayFlow.Inventory.Infrastructure.Persistence.Entities.InventoryReservationItemEntity",
             entity =>
             {

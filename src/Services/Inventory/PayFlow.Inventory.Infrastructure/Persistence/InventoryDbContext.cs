@@ -18,6 +18,9 @@ public sealed class InventoryDbContext
     public DbSet<InventoryReservationItemEntity> ReservationItems =>
         Set<InventoryReservationItemEntity>();
 
+    public DbSet<StockItemEntity> StockItems =>
+        Set<StockItemEntity>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
