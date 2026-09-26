@@ -2,6 +2,7 @@ using PayFlow.Payment.Application.Abstractions;
 using PayFlow.Payment.Application.Events;
 using PayFlow.Payment.Domain.Ledger;
 using PayFlow.Payment.Domain.ProviderOperations;
+using PaymentAggregate = PayFlow.Payment.Domain.Payments.Payment;
 
 namespace PayFlow.Payment.Application.Provider;
 
@@ -112,7 +113,7 @@ public sealed class ProviderCaptureOutcomeFinalizer
     private async Task ApplySuccessAsync(
         ProviderCaptureCompletionContext context,
         PaymentProviderCaptureResult result,
-        Domain.Payments.Payment payment,
+        PaymentAggregate payment,
         ProviderOperation operation,
         DateTimeOffset occurredAtUtc,
         CancellationToken cancellationToken)
@@ -167,7 +168,7 @@ public sealed class ProviderCaptureOutcomeFinalizer
     private async Task ApplyFailureAsync(
         ProviderCaptureCompletionContext context,
         PaymentProviderCaptureResult result,
-        Domain.Payments.Payment payment,
+        PaymentAggregate payment,
         ProviderOperation operation,
         DateTimeOffset occurredAtUtc,
         CancellationToken cancellationToken)
