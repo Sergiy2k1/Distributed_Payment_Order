@@ -4,7 +4,9 @@ using PayFlow.Order.Api.Endpoints.Orders.CreateOrder;
 using PayFlow.Order.Api.Errors;
 using PayFlow.Order.Api.HostedServices;
 using PayFlow.Order.Application.Abstractions;
+using PayFlow.Order.Application.Orders.BeginOrderProcessing;
 using PayFlow.Order.Application.Orders.CreateOrder;
+using PayFlow.Order.Infrastructure.Messaging;
 using PayFlow.Order.Infrastructure.Messaging.Kafka;
 using PayFlow.Order.Infrastructure.Messaging.Outbox;
 using PayFlow.Order.Infrastructure.Persistence;
@@ -52,6 +54,18 @@ var outboxPublisherWorkerOptions =
 var kafkaSection =
     builder.Configuration.GetSection("Kafka");
 
+var orderCommandsConsumerOptions =
+    new OrderCommandsConsumerOptions(
+        kafkaSection.GetValue<string>(
+            "BootstrapServers")
+            ?? "localhost:9092",
+        kafkaSection.GetValue<string>(
+            "OrderCommandsConsumerGroup")
+            ?? BeginOrderProcessingInboxProcessor.ConsumerName,
+        kafkaSection.GetValue(
+            "ConsumeErrorDelay",
+            TimeSpan.FromSeconds(1)));
+
 var kafkaProducerOptions =
     new KafkaProducerOptions(
         kafkaSection.GetValue<string>(
@@ -79,16 +93,25 @@ builder.Services.AddDbContext<OrderDbContext>(
     options => options.UseNpgsql(orderDatabaseConnectionString));
 
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+builder.Services.AddScoped<IOrderCommandRepository, OrderRepository>();
 builder.Services.AddScoped<
     ICreateOrderIdempotencyRepository,
     CreateOrderIdempotencyRepository>();
+builder.Services.AddScoped<
+    IInboxMessageRepository,
+    InboxMessageRepository>();
 builder.Services.AddScoped<IOutboxWriter, OrderOutboxWriter>();
+builder.Services.AddScoped<
+    IOrderCommandOutboxWriter,
+    OrderCommandOutboxWriter>();
 builder.Services.AddScoped<
     IOutboxMessageRepository,
     OutboxMessageRepository>();
 builder.Services.AddScoped<OutboxPublisher>();
 builder.Services.AddSingleton(outboxPublisherOptions);
 builder.Services.AddSingleton(outboxPublisherWorkerOptions);
+builder.Services.AddSingleton(orderCommandsConsumerOptions);
+builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(kafkaProducerOptions);
 builder.Services.AddSingleton<IProducer<string, string>>(
     _ => new ProducerBuilder<string, string>(
@@ -102,9 +125,14 @@ builder.Services.AddSingleton<
     IOutboxTransport,
     KafkaOutboxTransport>();
 builder.Services.AddHostedService<OutboxPublisherBackgroundService>();
+builder.Services.AddHostedService<OrderCommandsConsumerBackgroundService>();
 builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 builder.Services.AddSingleton<IClock, SystemClock>();
 builder.Services.AddScoped<CreateOrderHandler>();
+builder.Services.AddScoped<
+    IBeginOrderProcessingMessageHandler,
+    BeginOrderProcessingMessageHandler>();
+builder.Services.AddScoped<BeginOrderProcessingInboxProcessor>();
 
 var app = builder.Build();
 
