@@ -80,11 +80,9 @@ public sealed class Payment
 
         EnsureUtc(updatedAtUtc, nameof(updatedAtUtc));
 
-        if (updatedAtUtc < createdAtUtc)
-        {
-            throw new ArgumentOutOfRangeException(
-                nameof(updatedAtUtc));
-        }
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            updatedAtUtc,
+            createdAtUtc);
 
         ArgumentOutOfRangeException.ThrowIfNegative(
             version);
