@@ -37,6 +37,25 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  payment-db:
+    image: postgres:17-alpine
+    container_name: payflow-payment-db
+    environment:
+      POSTGRES_DB: payments_db
+      POSTGRES_USER: payflow_payment
+      POSTGRES_PASSWORD: ${PAYMENT_DB_PASSWORD:?PAYMENT_DB_PASSWORD is required}
+    ports:
+      - "${PAYMENT_DB_PORT:-5436}:5432"
+    volumes:
+      - payment-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U payflow_payment -d payments_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+    restart: unless-stopped
+
   saga-db:
     image: postgres:17-alpine
     container_name: payflow-saga-db
@@ -107,5 +126,6 @@ services:
 volumes:
   order-db-data:
   inventory-db-data:
+  payment-db-data:
   saga-db-data:
   kafka-data:
