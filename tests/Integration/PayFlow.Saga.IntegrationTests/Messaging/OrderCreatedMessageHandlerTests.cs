@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using PayFlow.Saga.Application.Messaging;
 using PayFlow.Saga.Application.Orders;
@@ -41,6 +42,7 @@ public sealed class OrderCreatedMessageHandlerTests(
             new OrderCreatedMessageHandler(
                 new CheckoutSagaRepository(dbContext),
                 new SagaEfUnitOfWork(dbContext),
+                new SagaOutboxWriter(dbContext),
                 CheckoutTimeout);
 
         var processor =
@@ -138,6 +140,56 @@ public sealed class OrderCreatedMessageHandlerTests(
         Assert.Equal(
             ProcessedAtUtc,
             inbox.ProcessedAtUtc);
+
+        var outboxMessage =
+            await dbContext.OutboxMessages
+                .AsNoTracking()
+                .SingleAsync(
+                    message =>
+                        message.AggregateId
+                        == consumedMessage.Message.Payload.OrderId,
+                    cancellationToken);
+
+        Assert.Equal(
+            "BeginOrderProcessing.v1",
+            outboxMessage.MessageType);
+        Assert.Equal(
+            1,
+            outboxMessage.SchemaVersion);
+        Assert.Equal(
+            consumedMessage.Message.Payload.OrderId,
+            outboxMessage.AggregateId);
+        Assert.Equal(
+            consumedMessage.Message.Envelope.CorrelationId,
+            outboxMessage.CorrelationId);
+        Assert.Equal(
+            consumedMessage.Message.Envelope.MessageId,
+            outboxMessage.CausationId);
+        Assert.Equal(
+            OccurredAtUtc,
+            outboxMessage.OccurredAtUtc);
+        Assert.Equal(
+            "orders.commands",
+            outboxMessage.Destination);
+        Assert.Equal(
+            "Saga",
+            outboxMessage.Producer);
+        Assert.Null(
+            outboxMessage.PublishedAtUtc);
+        Assert.Equal(
+            0,
+            outboxMessage.AttemptCount);
+
+        var payload =
+            JsonSerializer.Deserialize<BeginOrderProcessingV1>(
+                outboxMessage.Payload,
+                new JsonSerializerOptions(
+                    JsonSerializerDefaults.Web));
+
+        Assert.NotNull(payload);
+        Assert.Equal(
+            consumedMessage.Message.Payload.OrderId,
+            payload.OrderId);
     }
 
     [Fact]
@@ -159,6 +211,7 @@ public sealed class OrderCreatedMessageHandlerTests(
                 new OrderCreatedMessageHandler(
                     new CheckoutSagaRepository(dbContext),
                     new SagaEfUnitOfWork(dbContext),
+                    new SagaOutboxWriter(dbContext),
                     CheckoutTimeout);
 
             var processor =
@@ -197,12 +250,24 @@ public sealed class OrderCreatedMessageHandlerTests(
                             == consumedMessage.Message.Envelope.MessageId,
                     cancellationToken);
 
+        var outboxCount =
+            await verificationDbContext.OutboxMessages
+                .AsNoTracking()
+                .CountAsync(
+                    message =>
+                        message.AggregateId
+                        == consumedMessage.Message.Payload.OrderId,
+                    cancellationToken);
+
         Assert.Equal(
             0,
             sagaCount);
         Assert.Equal(
             0,
             inboxCount);
+        Assert.Equal(
+            0,
+            outboxCount);
     }
 
     private static ConsumedOrderCreatedMessage

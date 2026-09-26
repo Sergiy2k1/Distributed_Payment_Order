@@ -1,5 +1,6 @@
 using PayFlow.Saga.Application.Abstractions;
 using PayFlow.Saga.Application.Checkout;
+using PayFlow.Saga.Application.Messaging;
 using PayFlow.Saga.Domain.Checkout;
 
 namespace PayFlow.Saga.Application.Orders;
@@ -9,11 +10,13 @@ public sealed class OrderCreatedMessageHandler
 {
     private readonly ICheckoutSagaRepository _sagaRepository;
     private readonly ISagaUnitOfWork _unitOfWork;
+    private readonly ISagaOutboxWriter _outboxWriter;
     private readonly TimeSpan _checkoutTimeout;
 
     public OrderCreatedMessageHandler(
         ICheckoutSagaRepository sagaRepository,
         ISagaUnitOfWork unitOfWork,
+        ISagaOutboxWriter outboxWriter,
         TimeSpan checkoutTimeout)
     {
         if (checkoutTimeout <= TimeSpan.Zero)
@@ -26,6 +29,7 @@ public sealed class OrderCreatedMessageHandler
 
         _sagaRepository = sagaRepository;
         _unitOfWork = unitOfWork;
+        _outboxWriter = outboxWriter;
         _checkoutTimeout = checkoutTimeout;
     }
 
@@ -73,6 +77,28 @@ public sealed class OrderCreatedMessageHandler
         await _sagaRepository
             .AddAsync(
                 saga,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        var commandEnvelope =
+            new IntegrationMessageEnvelope(
+                Guid.NewGuid(),
+                "BeginOrderProcessing.v1",
+                1,
+                message.Payload.OrderId,
+                message.Envelope.CorrelationId,
+                message.Envelope.MessageId,
+                message.Envelope.OccurredAtUtc,
+                "Saga",
+                message.Envelope.TraceParent);
+
+        await _outboxWriter
+            .AddAsync(
+                new OutgoingIntegrationMessage(
+                    commandEnvelope,
+                    "orders.commands",
+                    new BeginOrderProcessingV1(
+                        message.Payload.OrderId)),
                 cancellationToken)
             .ConfigureAwait(false);
 
