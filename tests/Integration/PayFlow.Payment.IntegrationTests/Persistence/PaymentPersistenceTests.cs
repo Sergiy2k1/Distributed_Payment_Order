@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PayFlow.Payment.Domain.Ledger;
 using PayFlow.Payment.Domain.Payments;
+using PaymentAggregate = PayFlow.Payment.Domain.Payments.Payment;
 using PayFlow.Payment.Domain.ProviderOperations;
 using PayFlow.Payment.Infrastructure.Persistence.Repositories;
 using PayFlow.Payment.IntegrationTests.Infrastructure;
@@ -26,7 +27,7 @@ public sealed class PaymentPersistenceTests(
                 0,
                 TimeSpan.Zero);
 
-        var payment = Payment.Create(
+        var payment = PaymentAggregate.Create(
             Guid.NewGuid(),
             Guid.NewGuid(),
             35m,

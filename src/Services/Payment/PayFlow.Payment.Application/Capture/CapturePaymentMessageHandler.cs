@@ -1,5 +1,6 @@
 using PayFlow.Payment.Application.Abstractions;
 using PayFlow.Payment.Domain.Payments;
+using PaymentAggregate = PayFlow.Payment.Domain.Payments.Payment;
 using PayFlow.Payment.Domain.ProviderOperations;
 
 namespace PayFlow.Payment.Application.Capture;
@@ -56,7 +57,7 @@ public sealed class CapturePaymentMessageHandler
             return;
         }
 
-        var payment = Payment.Create(
+        var payment = PaymentAggregate.Create(
             payload.PaymentId,
             payload.OrderId,
             payload.Amount,
@@ -85,7 +86,7 @@ public sealed class CapturePaymentMessageHandler
     }
 
     private static void EnsureEquivalent(
-        Payment payment,
+        PaymentAggregate payment,
         CapturePaymentV1 payload)
     {
         if (payment.OrderId != payload.OrderId

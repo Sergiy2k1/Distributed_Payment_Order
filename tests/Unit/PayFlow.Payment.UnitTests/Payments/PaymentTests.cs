@@ -1,4 +1,5 @@
 using PayFlow.Payment.Domain.Payments;
+using PaymentAggregate = PayFlow.Payment.Domain.Payments.Payment;
 
 namespace PayFlow.Payment.UnitTests.Payments;
 
@@ -10,7 +11,7 @@ public sealed class PaymentTests
     [Fact]
     public void CreateStartsInCreatedState()
     {
-        var payment = Payment.Create(
+        var payment = PaymentAggregate.Create(
             Guid.NewGuid(),
             Guid.NewGuid(),
             35m,
@@ -48,8 +49,8 @@ public sealed class PaymentTests
         Assert.Equal("DECLINED", payment.FailureReasonCode);
     }
 
-    private static Payment CreatePayment() =>
-        Payment.Create(
+    private static PaymentAggregate CreatePayment() =>
+        PaymentAggregate.Create(
             Guid.NewGuid(),
             Guid.NewGuid(),
             35m,

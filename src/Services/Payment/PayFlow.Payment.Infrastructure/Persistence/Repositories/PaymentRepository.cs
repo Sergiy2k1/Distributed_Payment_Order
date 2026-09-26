@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using PayFlow.Payment.Application.Abstractions;
 using PayFlow.Payment.Domain.Payments;
+using PaymentAggregate = PayFlow.Payment.Domain.Payments.Payment;
 using PayFlow.Payment.Infrastructure.Persistence.Mappers;
 
 namespace PayFlow.Payment.Infrastructure.Persistence.Repositories;
@@ -15,7 +16,7 @@ public sealed class PaymentRepository : IPaymentRepository
     }
 
     public async Task AddAsync(
-        Payment payment,
+        PaymentAggregate payment,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(payment);
@@ -25,7 +26,7 @@ public sealed class PaymentRepository : IPaymentRepository
             cancellationToken);
     }
 
-    public async Task<Payment?> GetByIdAsync(
+    public async Task<PaymentAggregate?> GetByIdAsync(
         Guid paymentId,
         CancellationToken cancellationToken = default)
     {
@@ -47,7 +48,7 @@ public sealed class PaymentRepository : IPaymentRepository
     }
 
     public Task ApplyAsync(
-        Payment payment,
+        PaymentAggregate payment,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(payment);

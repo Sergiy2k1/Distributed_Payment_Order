@@ -1,11 +1,12 @@
 using PayFlow.Payment.Domain.Payments;
+using PaymentAggregate = PayFlow.Payment.Domain.Payments.Payment;
 using PayFlow.Payment.Infrastructure.Persistence.Entities;
 
 namespace PayFlow.Payment.Infrastructure.Persistence.Mappers;
 
 public static class PaymentEntityMapper
 {
-    public static Payment ToDomain(PaymentEntity entity)
+    public static PaymentAggregate ToDomain(PaymentEntity entity)
     {
         ArgumentNullException.ThrowIfNull(entity);
 
@@ -18,7 +19,7 @@ public static class PaymentEntityMapper
                 $"Persisted Payment status '{entity.Status}' is invalid.");
         }
 
-        return Payment.Rehydrate(
+        return PaymentAggregate.Rehydrate(
             entity.PaymentId,
             entity.OrderId,
             entity.Amount,
@@ -31,7 +32,7 @@ public static class PaymentEntityMapper
             entity.Version);
     }
 
-    public static PaymentEntity ToEntity(Payment payment)
+    public static PaymentEntity ToEntity(PaymentAggregate payment)
     {
         ArgumentNullException.ThrowIfNull(payment);
 
