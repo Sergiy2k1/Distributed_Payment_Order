@@ -39,6 +39,16 @@ public sealed class ProviderOperationEntityConfiguration
             .HasMaxLength(256)
             .IsRequired();
 
+        builder.Property(operation => operation.CorrelationId)
+            .HasColumnName("correlation_id");
+
+        builder.Property(operation => operation.CausationId)
+            .HasColumnName("causation_id");
+
+        builder.Property(operation => operation.TraceParent)
+            .HasColumnName("trace_parent")
+            .HasMaxLength(256);
+
         builder.Property(operation => operation.Status)
             .HasColumnName("status")
             .HasMaxLength(32)

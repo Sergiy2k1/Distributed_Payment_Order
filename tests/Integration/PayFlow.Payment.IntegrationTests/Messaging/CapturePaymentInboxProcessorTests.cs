@@ -59,6 +59,8 @@ public sealed class CapturePaymentInboxProcessorTests(
         Assert.Equal(
             $"payment:{paymentId:D}:capture:v1",
             operation.ProviderIdempotencyKey);
+        Assert.Equal(orderId, operation.CorrelationId);
+        Assert.NotNull(operation.CausationId);
     }
 
     [Fact]

@@ -71,7 +71,10 @@ public sealed class CapturePaymentMessageHandler
             ProviderOperation.CreateCapture(
                 Guid.NewGuid(),
                 payload.PaymentId,
-                envelope.OccurredAtUtc);
+                envelope.OccurredAtUtc,
+                envelope.CorrelationId,
+                envelope.MessageId,
+                envelope.TraceParent);
 
         await _paymentRepository.AddAsync(
             payment,

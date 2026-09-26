@@ -356,6 +356,11 @@ partial class PaymentDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("character varying(32)")
                     .HasColumnName("status");
 
+                entity.Property<string>("TraceParent")
+                    .HasMaxLength(256)
+                    .HasColumnType("character varying(256)")
+                    .HasColumnName("trace_parent");
+
                 entity.Property<DateTimeOffset>("UpdatedAtUtc")
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("updated_at_utc");
@@ -396,6 +401,14 @@ partial class PaymentDbContextModelSnapshot : ModelSnapshot
                 entity.Property<Guid>("BusinessOperationId")
                     .HasColumnType("uuid")
                     .HasColumnName("business_operation_id");
+
+                entity.Property<Guid?>("CausationId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("causation_id");
+
+                entity.Property<Guid?>("CorrelationId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("correlation_id");
 
                 entity.Property<DateTimeOffset>("CreatedAtUtc")
                     .HasColumnType("timestamp with time zone")

@@ -115,7 +115,10 @@ public sealed class ProviderOperationExecutionRepository
             payment.Amount,
             payment.Currency,
             operation.ProviderIdempotencyKey,
-            operation.AttemptCount);
+            operation.AttemptCount,
+            operation.CorrelationId,
+            operation.CausationId,
+            operation.TraceParent);
     }
 
     private static void EnsureUtc(

@@ -31,6 +31,9 @@ public static class ProviderOperationEntityMapper
             entity.NextAttemptAtUtc,
             entity.LastErrorCode,
             entity.ProviderReference,
+            entity.CorrelationId,
+            entity.CausationId,
+            entity.TraceParent,
             entity.Version);
     }
 
@@ -44,6 +47,9 @@ public static class ProviderOperationEntityMapper
             BusinessOperationId = operation.BusinessOperationId,
             OperationType = operation.OperationType,
             ProviderIdempotencyKey = operation.ProviderIdempotencyKey,
+            CorrelationId = operation.CorrelationId,
+            CausationId = operation.CausationId,
+            TraceParent = operation.TraceParent,
             Status = operation.Status.ToString(),
             AttemptCount = operation.AttemptCount,
             CreatedAtUtc = operation.CreatedAtUtc,

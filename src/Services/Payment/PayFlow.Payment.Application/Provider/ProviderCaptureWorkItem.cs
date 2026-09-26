@@ -7,4 +7,7 @@ public sealed record ProviderCaptureWorkItem(
     decimal Amount,
     string Currency,
     string ProviderIdempotencyKey,
-    int AttemptCount);
+    int AttemptCount,
+    Guid? CorrelationId,
+    Guid? CausationId,
+    string? TraceParent);

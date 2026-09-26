@@ -7,12 +7,18 @@ public sealed class ProviderOperation
         Guid businessOperationId,
         string operationType,
         string providerIdempotencyKey,
-        DateTimeOffset createdAtUtc)
+        DateTimeOffset createdAtUtc,
+        Guid? correlationId = null,
+        Guid? causationId = null,
+        string? traceParent = null)
     {
         ProviderOperationId = providerOperationId;
         BusinessOperationId = businessOperationId;
         OperationType = operationType;
         ProviderIdempotencyKey = providerIdempotencyKey;
+        CorrelationId = correlationId;
+        CausationId = causationId;
+        TraceParent = traceParent;
         Status = ProviderOperationStatus.Pending;
         AttemptCount = 0;
         CreatedAtUtc = createdAtUtc;
@@ -28,6 +34,9 @@ public sealed class ProviderOperation
     public Guid BusinessOperationId { get; }
     public string OperationType { get; }
     public string ProviderIdempotencyKey { get; }
+    public Guid? CorrelationId { get; }
+    public Guid? CausationId { get; }
+    public string? TraceParent { get; }
     public ProviderOperationStatus Status { get; private set; }
     public int AttemptCount { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; }
@@ -55,6 +64,31 @@ public sealed class ProviderOperation
             createdAtUtc);
     }
 
+    public static ProviderOperation CreateCapture(
+        Guid providerOperationId,
+        Guid paymentId,
+        DateTimeOffset createdAtUtc,
+        Guid correlationId,
+        Guid causationId,
+        string? traceParent)
+    {
+        ValidateIdentity(providerOperationId, nameof(providerOperationId));
+        ValidateIdentity(paymentId, nameof(paymentId));
+        ValidateIdentity(correlationId, nameof(correlationId));
+        ValidateIdentity(causationId, nameof(causationId));
+        EnsureUtc(createdAtUtc, nameof(createdAtUtc));
+
+        return new ProviderOperation(
+            providerOperationId,
+            paymentId,
+            "Capture",
+            $"payment:{paymentId:D}:capture:v1",
+            createdAtUtc,
+            correlationId,
+            causationId,
+            traceParent);
+    }
+
     public static ProviderOperation Rehydrate(
         Guid providerOperationId,
         Guid businessOperationId,
@@ -68,6 +102,9 @@ public sealed class ProviderOperation
         DateTimeOffset? nextAttemptAtUtc,
         string? lastErrorCode,
         string? providerReference,
+        Guid? correlationId,
+        Guid? causationId,
+        string? traceParent,
         long version)
     {
         ValidateIdentity(
@@ -105,7 +142,10 @@ public sealed class ProviderOperation
                 businessOperationId,
                 operationType,
                 providerIdempotencyKey,
-                createdAtUtc);
+                createdAtUtc,
+                correlationId,
+                causationId,
+                traceParent);
 
         operation.Status = status;
         operation.AttemptCount = attemptCount;

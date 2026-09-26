@@ -6,6 +6,9 @@ public sealed class ProviderOperationEntity
     public Guid BusinessOperationId { get; set; }
     public string OperationType { get; set; } = string.Empty;
     public string ProviderIdempotencyKey { get; set; } = string.Empty;
+    public Guid? CorrelationId { get; set; }
+    public Guid? CausationId { get; set; }
+    public string? TraceParent { get; set; }
     public string Status { get; set; } = string.Empty;
     public int AttemptCount { get; set; }
     public DateTimeOffset CreatedAtUtc { get; set; }
