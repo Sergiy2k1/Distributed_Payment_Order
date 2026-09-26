@@ -154,6 +154,14 @@ partial class SagaDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("timestamp with time zone")
                     .HasColumnName("next_attempt_at_utc");
 
+                entity.Property<Guid?>("ReservationId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("reservation_id");
+
+                entity.Property<DateTimeOffset?>("ReservationExpiresAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("reservation_expires_at_utc");
+
                 entity.Property<int>("RetryCount")
                     .HasColumnType("integer")
                     .HasColumnName("retry_count");
@@ -197,6 +205,14 @@ partial class SagaDbContextModelSnapshot : ModelSnapshot
                         table.HasCheckConstraint(
                             "ck_checkout_sagas_deadline_after_start",
                             "deadline_at_utc > started_at_utc");
+
+                        table.HasCheckConstraint(
+                            "ck_checkout_sagas_reservation_deadline",
+                            "reservation_expires_at_utc IS NULL OR (reservation_expires_at_utc > started_at_utc AND reservation_expires_at_utc <= deadline_at_utc)");
+
+                        table.HasCheckConstraint(
+                            "ck_checkout_sagas_reservation_pair",
+                            "(reservation_id IS NULL AND reservation_expires_at_utc IS NULL) OR (reservation_id IS NOT NULL AND reservation_expires_at_utc IS NOT NULL)");
 
                         table.HasCheckConstraint(
                             "ck_checkout_sagas_retry_count_non_negative",

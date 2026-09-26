@@ -25,6 +25,16 @@ public sealed class CheckoutSagaEntityConfiguration
                 table.HasCheckConstraint(
                     "ck_checkout_sagas_deadline_after_start",
                     "deadline_at_utc > started_at_utc");
+
+                table.HasCheckConstraint(
+                    "ck_checkout_sagas_reservation_pair",
+                    "(reservation_id IS NULL AND reservation_expires_at_utc IS NULL) OR "
+                    + "(reservation_id IS NOT NULL AND reservation_expires_at_utc IS NOT NULL)");
+
+                table.HasCheckConstraint(
+                    "ck_checkout_sagas_reservation_deadline",
+                    "reservation_expires_at_utc IS NULL OR "
+                    + "(reservation_expires_at_utc > started_at_utc AND reservation_expires_at_utc <= deadline_at_utc)");
             });
 
         builder.HasKey(saga => saga.OrderId);
@@ -64,6 +74,12 @@ public sealed class CheckoutSagaEntityConfiguration
         builder.Property(saga => saga.DeadlineAtUtc)
             .HasColumnName("deadline_at_utc")
             .IsRequired();
+
+        builder.Property(saga => saga.ReservationId)
+            .HasColumnName("reservation_id");
+
+        builder.Property(saga => saga.ReservationExpiresAtUtc)
+            .HasColumnName("reservation_expires_at_utc");
 
         builder.Property(saga => saga.RetryCount)
             .HasColumnName("retry_count")

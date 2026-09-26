@@ -7,4 +7,12 @@ public interface ICheckoutSagaRepository
     Task AddAsync(
         CheckoutSaga saga,
         CancellationToken cancellationToken = default);
+
+    Task<CheckoutSaga?> GetByOrderIdAsync(
+        Guid orderId,
+        CancellationToken cancellationToken = default);
+
+    Task ApplyAsync(
+        CheckoutSaga saga,
+        CancellationToken cancellationToken = default);
 }

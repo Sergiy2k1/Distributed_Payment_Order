@@ -35,6 +35,8 @@ public sealed class CheckoutSagaTests
         Assert.Equal(0, saga.Version);
         Assert.Equal(0, saga.RetryCount);
         Assert.Null(saga.NextAttemptAtUtc);
+        Assert.Null(saga.ReservationId);
+        Assert.Null(saga.ReservationExpiresAtUtc);
         Assert.Equal(
             DeadlineAtUtc,
             saga.DeadlineAtUtc);
@@ -95,6 +97,68 @@ public sealed class CheckoutSagaTests
                 35m,
                 StartedAtUtc,
                 DeadlineAtUtc));
+    }
+
+
+    [Fact]
+    public void BeginInventoryReservationMovesSagaToWaitingForInventory()
+    {
+        var saga = CheckoutSaga.Start(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CreateItems(),
+            "USD",
+            35m,
+            StartedAtUtc,
+            DeadlineAtUtc);
+        var reservationId = Guid.NewGuid();
+        var occurredAtUtc = StartedAtUtc.AddSeconds(5);
+
+        saga.BeginInventoryReservation(
+            reservationId,
+            occurredAtUtc,
+            DeadlineAtUtc);
+
+        Assert.Equal(
+            CheckoutSagaStatus.WaitingForInventory,
+            saga.Status);
+        Assert.Equal(
+            reservationId,
+            saga.ReservationId);
+        Assert.Equal(
+            DeadlineAtUtc,
+            saga.ReservationExpiresAtUtc);
+        Assert.Equal(
+            occurredAtUtc,
+            saga.UpdatedAtUtc);
+        Assert.Equal(1, saga.Version);
+    }
+
+    [Fact]
+    public void BeginInventoryReservationReplayWithSameIdentityIsNoOp()
+    {
+        var saga = CheckoutSaga.Start(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CreateItems(),
+            "USD",
+            35m,
+            StartedAtUtc,
+            DeadlineAtUtc);
+        var reservationId = Guid.NewGuid();
+        var occurredAtUtc = StartedAtUtc.AddSeconds(5);
+
+        saga.BeginInventoryReservation(
+            reservationId,
+            occurredAtUtc,
+            DeadlineAtUtc);
+
+        saga.BeginInventoryReservation(
+            reservationId,
+            occurredAtUtc,
+            DeadlineAtUtc);
+
+        Assert.Equal(1, saga.Version);
     }
 
     private static CheckoutSagaItem[] CreateItems()
