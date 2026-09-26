@@ -263,6 +263,129 @@ partial class SagaDbContextModelSnapshot : ModelSnapshot
             });
 
         modelBuilder.Entity(
+            "PayFlow.Saga.Infrastructure.Persistence.Entities.OutboxMessageEntity",
+            entity =>
+            {
+                entity.Property<Guid>("OutboxMessageId")
+                    .ValueGeneratedNever()
+                    .HasColumnType("uuid")
+                    .HasColumnName("outbox_message_id");
+
+                entity.Property<Guid>("AggregateId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("aggregate_id");
+
+                entity.Property<int>("AttemptCount")
+                    .ValueGeneratedOnAdd()
+                    .HasColumnType("integer")
+                    .HasDefaultValue(0)
+                    .HasColumnName("attempt_count");
+
+                entity.Property<Guid?>("CausationId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("causation_id");
+
+                entity.Property<DateTimeOffset?>("ClaimedUntilUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("claimed_until_utc");
+
+                entity.Property<Guid?>("ClaimToken")
+                    .HasColumnType("uuid")
+                    .HasColumnName("claim_token");
+
+                entity.Property<Guid>("CorrelationId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("correlation_id");
+
+                entity.Property<DateTimeOffset>("CreatedAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("created_at_utc");
+
+                entity.Property<string>("Destination")
+                    .IsRequired()
+                    .HasMaxLength(256)
+                    .HasColumnType("character varying(256)")
+                    .HasColumnName("destination");
+
+                entity.Property<string>("LastErrorCode")
+                    .HasMaxLength(128)
+                    .HasColumnType("character varying(128)")
+                    .HasColumnName("last_error_code");
+
+                entity.Property<Guid>("MessageId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("message_id");
+
+                entity.Property<string>("MessageType")
+                    .IsRequired()
+                    .HasMaxLength(256)
+                    .HasColumnType("character varying(256)")
+                    .HasColumnName("message_type");
+
+                entity.Property<DateTimeOffset?>("NextAttemptAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("next_attempt_at_utc");
+
+                entity.Property<DateTimeOffset>("OccurredAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("occurred_at_utc");
+
+                entity.Property<string>("Payload")
+                    .IsRequired()
+                    .HasColumnType("jsonb")
+                    .HasColumnName("payload");
+
+                entity.Property<string>("Producer")
+                    .IsRequired()
+                    .HasMaxLength(128)
+                    .HasColumnType("character varying(128)")
+                    .HasColumnName("producer");
+
+                entity.Property<DateTimeOffset?>("PublishedAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("published_at_utc");
+
+                entity.Property<int>("SchemaVersion")
+                    .HasColumnType("integer")
+                    .HasColumnName("schema_version");
+
+                entity.Property<string>("TraceParent")
+                    .HasMaxLength(256)
+                    .HasColumnType("character varying(256)")
+                    .HasColumnName("trace_parent");
+
+                entity.HasKey("OutboxMessageId");
+
+                entity.HasIndex("MessageId")
+                    .IsUnique();
+
+                entity.HasIndex(
+                        "PublishedAtUtc",
+                        "NextAttemptAtUtc",
+                        "CreatedAtUtc")
+                    .HasDatabaseName(
+                        "IX_outbox_messages_publish_pending")
+                    .HasFilter("published_at_utc IS NULL");
+
+                entity.ToTable(
+                    "outbox_messages",
+                    table =>
+                    {
+                        table.HasCheckConstraint(
+                            "ck_outbox_messages_attempt_count_non_negative",
+                            "attempt_count >= 0");
+
+                        table.HasCheckConstraint(
+                            "ck_outbox_messages_claim_pair",
+                            "(claim_token IS NULL AND claimed_until_utc IS NULL) OR (claim_token IS NOT NULL AND claimed_until_utc IS NOT NULL)");
+
+                        table.HasCheckConstraint(
+                            "ck_outbox_messages_schema_version_positive",
+                            "schema_version > 0");
+                    });
+            });
+
+        modelBuilder.Entity(
             "PayFlow.Saga.Infrastructure.Persistence.Entities.CheckoutSagaItemEntity",
             entity =>
             {

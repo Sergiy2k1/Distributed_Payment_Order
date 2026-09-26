@@ -20,6 +20,9 @@ public sealed class SagaDbContext : DbContext
     public DbSet<CheckoutSagaItemEntity> CheckoutSagaItems =>
         Set<CheckoutSagaItemEntity>();
 
+    public DbSet<OutboxMessageEntity> OutboxMessages =>
+        Set<OutboxMessageEntity>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
