@@ -252,7 +252,7 @@ public sealed class ProviderCaptureOutcomeFinalizerTests(
                     cancellationToken));
     }
 
-    private ProviderCaptureOutcomeFinalizer CreateFinalizer(
+    private static ProviderCaptureOutcomeFinalizer CreateFinalizer(
         PaymentDbContext dbContext)
     {
         return new ProviderCaptureOutcomeFinalizer(
