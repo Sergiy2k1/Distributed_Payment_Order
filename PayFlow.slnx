@@ -4,6 +4,7 @@
   <Project Path="src/Services/Order/PayFlow.Order.Domain/PayFlow.Order.Domain.csproj" />
   <Project Path="src/Services/Order/PayFlow.Order.Infrastructure/PayFlow.Order.Infrastructure.csproj" />
   <Project Path="src/Services/Saga/PayFlow.Saga.Application/PayFlow.Saga.Application.csproj" />
+  <Project Path="src/Services/Saga/PayFlow.Saga.Domain/PayFlow.Saga.Domain.csproj" />
   <Project Path="src/Services/Saga/PayFlow.Saga.Infrastructure/PayFlow.Saga.Infrastructure.csproj" />
   <Project Path="tests/Integration/PayFlow.Order.IntegrationTests/PayFlow.Order.IntegrationTests.csproj" />
   <Project Path="tests/Integration/PayFlow.Saga.IntegrationTests/PayFlow.Saga.IntegrationTests.csproj" />

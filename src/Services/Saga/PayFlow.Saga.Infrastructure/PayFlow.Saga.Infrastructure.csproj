@@ -16,5 +16,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../PayFlow.Saga.Application/PayFlow.Saga.Application.csproj" />
+    <ProjectReference Include="../PayFlow.Saga.Domain/PayFlow.Saga.Domain.csproj" />
   </ItemGroup>
 </Project>

@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../../src/Services/Saga/PayFlow.Saga.Domain/PayFlow.Saga.Domain.csproj" />
     <ProjectReference Include="../../../src/Services/Saga/PayFlow.Saga.Infrastructure/PayFlow.Saga.Infrastructure.csproj" />
   </ItemGroup>
 </Project>

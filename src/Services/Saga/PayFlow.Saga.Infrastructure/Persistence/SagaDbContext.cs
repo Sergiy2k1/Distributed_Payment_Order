@@ -14,6 +14,12 @@ public sealed class SagaDbContext : DbContext
     public DbSet<InboxMessageEntity> InboxMessages =>
         Set<InboxMessageEntity>();
 
+    public DbSet<CheckoutSagaEntity> CheckoutSagas =>
+        Set<CheckoutSagaEntity>();
+
+    public DbSet<CheckoutSagaItemEntity> CheckoutSagaItems =>
+        Set<CheckoutSagaItemEntity>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

@@ -2,8 +2,4 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="../PayFlow.Saga.Domain/PayFlow.Saga.Domain.csproj" />
-  </ItemGroup>
 </Project>
