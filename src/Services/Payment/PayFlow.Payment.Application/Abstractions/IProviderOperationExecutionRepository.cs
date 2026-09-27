@@ -8,4 +8,9 @@ public interface IProviderOperationExecutionRepository
         DateTimeOffset nowUtc,
         DateTimeOffset staleProcessingBeforeUtc,
         CancellationToken cancellationToken = default);
+
+    Task<ProviderRefundWorkItem?> ClaimNextRefundAsync(
+        DateTimeOffset nowUtc,
+        DateTimeOffset staleProcessingBeforeUtc,
+        CancellationToken cancellationToken = default);
 }

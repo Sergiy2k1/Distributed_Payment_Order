@@ -150,5 +150,32 @@ public sealed class LedgerTransaction
                     amount,
                     currency)
             ]);
+    }    public static LedgerTransaction CreateRefund(
+        Guid ledgerTransactionId,
+        Guid refundId,
+        decimal amount,
+        string currency,
+        DateTimeOffset occurredAtUtc)
+    {
+        return Create(
+            ledgerTransactionId,
+            "Refund",
+            refundId,
+            currency,
+            occurredAtUtc,
+            [
+                LedgerEntry.Create(
+                    Guid.NewGuid(),
+                    "merchant-settlement-payable",
+                    LedgerEntrySide.Debit,
+                    amount,
+                    currency),
+                LedgerEntry.Create(
+                    Guid.NewGuid(),
+                    "provider-clearing-asset",
+                    LedgerEntrySide.Credit,
+                    amount,
+                    currency)
+            ]);
     }
 }
