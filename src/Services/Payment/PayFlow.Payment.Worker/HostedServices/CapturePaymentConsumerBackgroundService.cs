@@ -1,3 +1,4 @@
+using System.Text;
 using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -63,23 +64,58 @@ public sealed partial class CapturePaymentConsumerBackgroundService
                 var receivedAtUtc =
                     _timeProvider.GetUtcNow();
 
-                var consumedMessage =
-                    CapturePaymentKafkaMessageParser.Parse(
-                        result,
-                        receivedAtUtc);
+                var messageType =
+                    GetMessageType(result);
 
                 await using var scope =
                     _scopeFactory.CreateAsyncScope();
 
-                var processor =
-                    scope.ServiceProvider
-                        .GetRequiredService<
-                            CapturePaymentInboxProcessor>();
+                switch (messageType)
+                {
+                    case CapturePaymentKafkaMessageParser.MessageType:
+                    {
+                        var consumedMessage =
+                            CapturePaymentKafkaMessageParser.Parse(
+                                result,
+                                receivedAtUtc);
 
-                await processor.ProcessAsync(
-                    consumedMessage,
-                    _timeProvider.GetUtcNow(),
-                    stoppingToken);
+                        var processor =
+                            scope.ServiceProvider
+                                .GetRequiredService<
+                                    CapturePaymentInboxProcessor>();
+
+                        await processor.ProcessAsync(
+                            consumedMessage,
+                            _timeProvider.GetUtcNow(),
+                            stoppingToken);
+
+                        break;
+                    }
+
+                    case RefundPaymentKafkaMessageParser.MessageType:
+                    {
+                        var consumedMessage =
+                            RefundPaymentKafkaMessageParser.Parse(
+                                result,
+                                receivedAtUtc);
+
+                        var processor =
+                            scope.ServiceProvider
+                                .GetRequiredService<
+                                    RefundPaymentInboxProcessor>();
+
+                        await processor.ProcessAsync(
+                            consumedMessage,
+                            _timeProvider.GetUtcNow(),
+                            stoppingToken);
+
+                        break;
+                    }
+
+                    default:
+                        throw new InvalidDataException(
+                            $"Unsupported Payment command '{messageType}'.");
+                }
 
                 consumer.Commit(result);
             }
@@ -103,6 +139,47 @@ public sealed partial class CapturePaymentConsumerBackgroundService
         }
 
         consumer.Close();
+    }
+
+    private static string GetMessageType(
+        ConsumeResult<string, string> result)
+    {
+        var headers = result.Message?.Headers
+            ?? throw new InvalidDataException(
+                "Kafka message headers are missing.");
+
+        var matches = headers
+            .Where(header =>
+                string.Equals(
+                    header.Key,
+                    "message-type",
+                    StringComparison.Ordinal))
+            .ToArray();
+
+        if (matches.Length != 1)
+        {
+            throw new InvalidDataException(
+                "Kafka header 'message-type' must occur exactly once.");
+        }
+
+        var bytes = matches[0].GetValueBytes();
+
+        if (bytes is null)
+        {
+            throw new InvalidDataException(
+                "Kafka header 'message-type' is empty.");
+        }
+
+        var messageType =
+            Encoding.UTF8.GetString(bytes);
+
+        if (string.IsNullOrWhiteSpace(messageType))
+        {
+            throw new InvalidDataException(
+                "Kafka header 'message-type' is empty.");
+        }
+
+        return messageType;
     }
 
     [LoggerMessage(

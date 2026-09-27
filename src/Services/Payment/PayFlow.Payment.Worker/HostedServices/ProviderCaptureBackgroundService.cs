@@ -73,6 +73,21 @@ public sealed partial class ProviderCaptureBackgroundService
     private async Task<bool> ExecuteIterationAsync(
         CancellationToken cancellationToken)
     {
+        if (await TryExecuteCaptureAsync(
+                cancellationToken)
+            .ConfigureAwait(false))
+        {
+            return true;
+        }
+
+        return await TryExecuteRefundAsync(
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<bool> TryExecuteCaptureAsync(
+        CancellationToken cancellationToken)
+    {
         var claimAtUtc =
             _timeProvider.GetUtcNow();
 
@@ -141,6 +156,95 @@ public sealed partial class ProviderCaptureBackgroundService
 
             await finalizer.FinalizeAsync(
                 new ProviderCaptureCompletionContext(
+                    workItem.PaymentId,
+                    workItem.OrderId,
+                    correlationId,
+                    workItem.CausationId,
+                    workItem.TraceParent),
+                result,
+                completedAtUtc,
+                completedAtUtc.Add(
+                    _executorOptions.AmbiguousRetryDelay),
+                cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return true;
+    }
+
+    private async Task<bool> TryExecuteRefundAsync(
+        CancellationToken cancellationToken)
+    {
+        var claimAtUtc =
+            _timeProvider.GetUtcNow();
+
+        ProviderRefundWorkItem? workItem;
+
+        await using (var claimScope =
+            _scopeFactory.CreateAsyncScope())
+        {
+            var repository =
+                claimScope.ServiceProvider
+                    .GetRequiredService<
+                        IProviderOperationExecutionRepository>();
+
+            workItem =
+                await repository.ClaimNextRefundAsync(
+                    claimAtUtc,
+                    claimAtUtc.Subtract(
+                        _executorOptions.StaleProcessingAfter),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if (workItem is null)
+        {
+            return false;
+        }
+
+        if (workItem.CorrelationId is not { } correlationId
+            || correlationId == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                "Claimed refund operation is missing CorrelationId.");
+        }
+
+        PaymentProviderRefundResult result;
+
+        await using (var providerScope =
+            _scopeFactory.CreateAsyncScope())
+        {
+            var provider =
+                providerScope.ServiceProvider
+                    .GetRequiredService<IPaymentProvider>();
+
+            result =
+                await provider.RefundAsync(
+                    new PaymentProviderRefundRequest(
+                        workItem.RefundId,
+                        workItem.PaymentId,
+                        workItem.OrderId,
+                        workItem.Amount,
+                        workItem.Currency,
+                        workItem.ProviderIdempotencyKey),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var completedAtUtc =
+            _timeProvider.GetUtcNow();
+
+        await using (var finalizationScope =
+            _scopeFactory.CreateAsyncScope())
+        {
+            var finalizer =
+                finalizationScope.ServiceProvider
+                    .GetRequiredService<
+                        IProviderRefundOutcomeFinalizer>();
+
+            await finalizer.FinalizeAsync(
+                new ProviderRefundCompletionContext(
+                    workItem.RefundId,
                     workItem.PaymentId,
                     workItem.OrderId,
                     correlationId,
