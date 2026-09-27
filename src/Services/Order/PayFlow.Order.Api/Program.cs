@@ -6,6 +6,7 @@ using PayFlow.Order.Api.HostedServices;
 using PayFlow.Order.Application.Abstractions;
 using PayFlow.Order.Application.Orders.BeginOrderProcessing;
 using PayFlow.Order.Application.Orders.CreateOrder;
+using PayFlow.Order.Application.Orders.ConfirmOrder;
 using PayFlow.Order.Infrastructure.Messaging;
 using PayFlow.Order.Infrastructure.Messaging.Kafka;
 using PayFlow.Order.Infrastructure.Messaging.Outbox;
@@ -132,7 +133,11 @@ builder.Services.AddScoped<CreateOrderHandler>();
 builder.Services.AddScoped<
     IBeginOrderProcessingMessageHandler,
     BeginOrderProcessingMessageHandler>();
+builder.Services.AddScoped<
+    IConfirmOrderMessageHandler,
+    ConfirmOrderMessageHandler>();
 builder.Services.AddScoped<BeginOrderProcessingInboxProcessor>();
+builder.Services.AddScoped<ConfirmOrderInboxProcessor>();
 
 var app = builder.Build();
 
