@@ -215,8 +215,10 @@ public sealed class ProviderCaptureOutcomeFinalizer
             new PaymentCapturedV1(
                 payment.OrderId,
                 payment.PaymentId,
-                result.ProviderReference,
-                occurredAtUtc),
+                payment.Amount,
+                payment.Currency,
+                occurredAtUtc,
+                result.ProviderReference),
             context.TraceParent,
             cancellationToken)
             .ConfigureAwait(false);
