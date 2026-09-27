@@ -1,3 +1,4 @@
+using System.Text;
 using Confluent.Kafka;
 using PayFlow.Order.Infrastructure.Messaging;
 using PayFlow.Order.Infrastructure.Messaging.Kafka;
@@ -64,25 +65,69 @@ public sealed partial class OrderCommandsConsumerBackgroundService
                     result = consumer.Consume(
                         stoppingToken);
 
-                    var consumedMessage =
-                        BeginOrderProcessingKafkaMessageParser.Parse(
-                            result,
-                            _timeProvider.GetUtcNow());
+                    var messageType =
+                        GetMessageType(result);
 
                     await using var scope =
                         _scopeFactory.CreateAsyncScope();
 
-                    var processor =
-                        scope.ServiceProvider
-                            .GetRequiredService<
-                                BeginOrderProcessingInboxProcessor>();
+                    var processed = false;
+                    Guid messageId;
 
-                    var processed =
-                        await processor.ProcessAsync(
-                                consumedMessage,
-                                _timeProvider.GetUtcNow(),
-                                stoppingToken)
-                            .ConfigureAwait(false);
+                    switch (messageType)
+                    {
+                        case BeginOrderProcessingKafkaMessageParser.MessageType:
+                        {
+                            var consumedMessage =
+                                BeginOrderProcessingKafkaMessageParser.Parse(
+                                    result,
+                                    _timeProvider.GetUtcNow());
+
+                            var processor =
+                                scope.ServiceProvider
+                                    .GetRequiredService<
+                                        BeginOrderProcessingInboxProcessor>();
+
+                            processed =
+                                await processor.ProcessAsync(
+                                        consumedMessage,
+                                        _timeProvider.GetUtcNow(),
+                                        stoppingToken)
+                                    .ConfigureAwait(false);
+
+                            messageId =
+                                consumedMessage.Message.Envelope.MessageId;
+                            break;
+                        }
+
+                        case ConfirmOrderKafkaMessageParser.MessageType:
+                        {
+                            var consumedMessage =
+                                ConfirmOrderKafkaMessageParser.Parse(
+                                    result,
+                                    _timeProvider.GetUtcNow());
+
+                            var processor =
+                                scope.ServiceProvider
+                                    .GetRequiredService<
+                                        ConfirmOrderInboxProcessor>();
+
+                            processed =
+                                await processor.ProcessAsync(
+                                        consumedMessage,
+                                        _timeProvider.GetUtcNow(),
+                                        stoppingToken)
+                                    .ConfigureAwait(false);
+
+                            messageId =
+                                consumedMessage.Message.Envelope.MessageId;
+                            break;
+                        }
+
+                        default:
+                            throw new InvalidDataException(
+                                $"Unsupported Order command '{messageType}'.");
+                    }
 
                     consumer.Commit(result);
 
@@ -91,7 +136,7 @@ public sealed partial class OrderCommandsConsumerBackgroundService
                         result.Topic,
                         result.Partition.Value,
                         result.Offset.Value,
-                        consumedMessage.Message.Envelope.MessageId,
+                        messageId,
                         processed);
                 }
                 catch (OperationCanceledException)
@@ -130,6 +175,47 @@ public sealed partial class OrderCommandsConsumerBackgroundService
 
             LogConsumerStopped(_logger);
         }
+    }
+
+    private static string GetMessageType(
+        ConsumeResult<string, string> result)
+    {
+        var headers = result.Message?.Headers
+            ?? throw new InvalidDataException(
+                "Kafka message headers are missing.");
+
+        var matches = headers
+            .Where(header =>
+                string.Equals(
+                    header.Key,
+                    "message-type",
+                    StringComparison.Ordinal))
+            .ToArray();
+
+        if (matches.Length != 1)
+        {
+            throw new InvalidDataException(
+                "Kafka header 'message-type' must occur exactly once.");
+        }
+
+        var bytes = matches[0].GetValueBytes();
+
+        if (bytes is null)
+        {
+            throw new InvalidDataException(
+                "Kafka header 'message-type' is empty.");
+        }
+
+        var messageType =
+            Encoding.UTF8.GetString(bytes);
+
+        if (string.IsNullOrWhiteSpace(messageType))
+        {
+            throw new InvalidDataException(
+                "Kafka header 'message-type' is empty.");
+        }
+
+        return messageType;
     }
 
     private async Task DelayAfterFailureAsync(
