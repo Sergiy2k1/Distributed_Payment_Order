@@ -124,6 +124,30 @@ public sealed partial class OrderCommandsConsumerBackgroundService
                             break;
                         }
 
+                        case CancelOrderKafkaMessageParser.MessageType:
+                        {
+                            var consumedMessage =
+                                CancelOrderKafkaMessageParser.Parse(
+                                    result,
+                                    _timeProvider.GetUtcNow());
+
+                            var processor =
+                                scope.ServiceProvider
+                                    .GetRequiredService<
+                                        CancelOrderInboxProcessor>();
+
+                            processed =
+                                await processor.ProcessAsync(
+                                        consumedMessage,
+                                        _timeProvider.GetUtcNow(),
+                                        stoppingToken)
+                                    .ConfigureAwait(false);
+
+                            messageId =
+                                consumedMessage.Message.Envelope.MessageId;
+                            break;
+                        }
+
                         default:
                             throw new InvalidDataException(
                                 $"Unsupported Order command '{messageType}'.");

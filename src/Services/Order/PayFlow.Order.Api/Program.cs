@@ -7,6 +7,7 @@ using PayFlow.Order.Application.Abstractions;
 using PayFlow.Order.Application.Orders.BeginOrderProcessing;
 using PayFlow.Order.Application.Orders.CreateOrder;
 using PayFlow.Order.Application.Orders.ConfirmOrder;
+using PayFlow.Order.Application.Orders.CancelOrder;
 using PayFlow.Order.Infrastructure.Messaging;
 using PayFlow.Order.Infrastructure.Messaging.Kafka;
 using PayFlow.Order.Infrastructure.Messaging.Outbox;
@@ -106,6 +107,9 @@ builder.Services.AddScoped<
     IOrderCommandOutboxWriter,
     OrderCommandOutboxWriter>();
 builder.Services.AddScoped<
+    ICancelOrderOutboxWriter,
+    CancelOrderOutboxWriter>();
+builder.Services.AddScoped<
     IOutboxMessageRepository,
     OutboxMessageRepository>();
 builder.Services.AddScoped<OutboxPublisher>();
@@ -136,8 +140,12 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IConfirmOrderMessageHandler,
     ConfirmOrderMessageHandler>();
+builder.Services.AddScoped<
+    ICancelOrderMessageHandler,
+    CancelOrderMessageHandler>();
 builder.Services.AddScoped<BeginOrderProcessingInboxProcessor>();
 builder.Services.AddScoped<ConfirmOrderInboxProcessor>();
+builder.Services.AddScoped<CancelOrderInboxProcessor>();
 
 var app = builder.Build();
 
