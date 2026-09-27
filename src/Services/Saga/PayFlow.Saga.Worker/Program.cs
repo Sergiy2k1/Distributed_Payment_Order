@@ -8,6 +8,7 @@ using PayFlow.Saga.Application.Checkout;
 using PayFlow.Saga.Application.Inventory;
 using PayFlow.Saga.Application.Messaging;
 using PayFlow.Saga.Application.Orders;
+using PayFlow.Saga.Application.Payments;
 using PayFlow.Saga.Infrastructure.Messaging;
 using PayFlow.Saga.Infrastructure.Messaging.Kafka;
 using PayFlow.Saga.Infrastructure.Messaging.Outbox;
@@ -129,10 +130,18 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IInventoryReservationRejectedMessageHandler,
     InventoryReservationRejectedMessageHandler>();
+builder.Services.AddScoped<
+    IPaymentCapturedMessageHandler,
+    PaymentCapturedMessageHandler>();
+builder.Services.AddScoped<
+    IPaymentFailedMessageHandler,
+    PaymentFailedMessageHandler>();
 builder.Services.AddScoped<OrderCreatedInboxProcessor>();
 builder.Services.AddScoped<OrderProcessingStartedInboxProcessor>();
 builder.Services.AddScoped<InventoryReservedInboxProcessor>();
 builder.Services.AddScoped<InventoryReservationRejectedInboxProcessor>();
+builder.Services.AddScoped<PaymentCapturedInboxProcessor>();
+builder.Services.AddScoped<PaymentFailedInboxProcessor>();
 builder.Services.AddScoped<OutboxPublisher>();
 
 builder.Services.AddSingleton(outboxPublisherOptions);
