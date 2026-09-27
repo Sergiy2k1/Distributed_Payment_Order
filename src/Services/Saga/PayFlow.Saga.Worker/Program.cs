@@ -128,6 +128,9 @@ builder.Services.AddScoped<
     IOrderConfirmedMessageHandler,
     OrderConfirmedMessageHandler>();
 builder.Services.AddScoped<
+    IOrderCancelledMessageHandler,
+    OrderCancelledMessageHandler>();
+builder.Services.AddScoped<
     IInventoryReservedMessageHandler,
     InventoryReservedMessageHandler>();
 builder.Services.AddScoped<
@@ -137,6 +140,9 @@ builder.Services.AddScoped<
     IInventoryConsumedMessageHandler,
     InventoryConsumedMessageHandler>();
 builder.Services.AddScoped<
+    IInventoryReleasedMessageHandler,
+    InventoryReleasedMessageHandler>();
+builder.Services.AddScoped<
     IPaymentCapturedMessageHandler,
     PaymentCapturedMessageHandler>();
 builder.Services.AddScoped<
@@ -145,9 +151,11 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<OrderCreatedInboxProcessor>();
 builder.Services.AddScoped<OrderProcessingStartedInboxProcessor>();
 builder.Services.AddScoped<OrderConfirmedInboxProcessor>();
+builder.Services.AddScoped<OrderCancelledInboxProcessor>();
 builder.Services.AddScoped<InventoryReservedInboxProcessor>();
 builder.Services.AddScoped<InventoryReservationRejectedInboxProcessor>();
 builder.Services.AddScoped<InventoryConsumedInboxProcessor>();
+builder.Services.AddScoped<InventoryReleasedInboxProcessor>();
 builder.Services.AddScoped<PaymentCapturedInboxProcessor>();
 builder.Services.AddScoped<PaymentFailedInboxProcessor>();
 builder.Services.AddScoped<OutboxPublisher>();

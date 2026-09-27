@@ -461,6 +461,70 @@ public sealed class CheckoutSaga
         Version++;
     }
 
+    public void ConfirmInventoryReleased(
+        Guid reservationId,
+        DateTimeOffset occurredAtUtc)
+    {
+        ValidateIdentity(reservationId, nameof(reservationId));
+        EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+
+        if (Status == CheckoutSagaStatus.WaitingForOrderCancellation)
+        {
+            if (ReservationId == reservationId)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException(
+                "InventoryReleased references a different reservation.");
+        }
+
+        if (Status != CheckoutSagaStatus.CompensatingInventory)
+        {
+            throw new InvalidOperationException(
+                $"Checkout Saga cannot confirm inventory release from {Status}.");
+        }
+
+        if (ReservationId != reservationId)
+        {
+            throw new InvalidOperationException(
+                "InventoryReleased reservation identity does not match persisted Saga reservation.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            occurredAtUtc,
+            UpdatedAtUtc);
+
+        Status = CheckoutSagaStatus.WaitingForOrderCancellation;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
+    public void CompleteWithBusinessFailure(
+        DateTimeOffset occurredAtUtc)
+    {
+        EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+
+        if (Status == CheckoutSagaStatus.CompletedWithBusinessFailure)
+        {
+            return;
+        }
+
+        if (Status != CheckoutSagaStatus.WaitingForOrderCancellation)
+        {
+            throw new InvalidOperationException(
+                $"Checkout Saga cannot complete with business failure from {Status}.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            occurredAtUtc,
+            UpdatedAtUtc);
+
+        Status = CheckoutSagaStatus.CompletedWithBusinessFailure;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
     public void RejectInventoryReservation(
         Guid reservationId,
         DateTimeOffset occurredAtUtc)

@@ -16,6 +16,8 @@ public static class InventoryEventKafkaMessageParser
         "InventoryReservationRejected.v1";
     public const string InventoryConsumedMessageType =
         "InventoryConsumed.v1";
+    public const string InventoryReleasedMessageType =
+        "InventoryReleased.v1";
     public const int SchemaVersion = 1;
     public const string Producer = "Inventory";
 
@@ -104,6 +106,41 @@ public static class InventoryEventKafkaMessageParser
 
         return new ConsumedInventoryConsumedMessage(
             new InventoryConsumedMessage(
+                parsed.Envelope,
+                payload),
+            parsed.SourceTopic,
+            parsed.SourcePartition,
+            parsed.SourceOffset,
+            receivedAtUtc);
+    }
+
+    public static ConsumedInventoryReleasedMessage ParseReleased(
+        ConsumeResult<string, string> consumeResult,
+        DateTimeOffset receivedAtUtc)
+    {
+        var parsed = ParseEnvelope(
+            consumeResult,
+            receivedAtUtc,
+            InventoryReleasedMessageType);
+
+        var payload =
+            Deserialize<InventoryReleasedV1>(
+                consumeResult.Message.Value,
+                InventoryReleasedMessageType);
+
+        EnsureOrderId(
+            payload.OrderId,
+            parsed.Envelope.AggregateId);
+
+        if (payload.ReservationId == Guid.Empty
+            || string.IsNullOrWhiteSpace(payload.ReasonCode))
+        {
+            throw new InvalidDataException(
+                "InventoryReleased payload is invalid.");
+        }
+
+        return new ConsumedInventoryReleasedMessage(
+            new InventoryReleasedMessage(
                 parsed.Envelope,
                 payload),
             parsed.SourceTopic,
