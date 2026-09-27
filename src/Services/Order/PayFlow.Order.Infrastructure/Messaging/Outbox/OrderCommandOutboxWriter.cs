@@ -1,4 +1,5 @@
 using PayFlow.Order.Application.Abstractions;
+using PayFlow.Order.Domain.Orders;
 using PayFlow.Order.Domain.Orders.Events;
 using PayFlow.Order.Infrastructure.Persistence;
 
@@ -26,8 +27,8 @@ public sealed class OrderCommandOutboxWriter
             (domainEvent.PreviousStatus, domainEvent.CurrentStatus) switch
             {
                 (
-                    Order.Domain.Orders.OrderStatus.Pending,
-                    Order.Domain.Orders.OrderStatus.Processing) =>
+                    OrderStatus.Pending,
+                    OrderStatus.Processing) =>
                     OrderProcessingStartedOutboxMapper.Map(
                         domainEvent,
                         Guid.NewGuid(),
@@ -37,8 +38,8 @@ public sealed class OrderCommandOutboxWriter
                         traceParent),
 
                 (
-                    Order.Domain.Orders.OrderStatus.Processing,
-                    Order.Domain.Orders.OrderStatus.Confirmed) =>
+                    OrderStatus.Processing,
+                    OrderStatus.Confirmed) =>
                     OrderConfirmedOutboxMapper.Map(
                         domainEvent,
                         Guid.NewGuid(),
