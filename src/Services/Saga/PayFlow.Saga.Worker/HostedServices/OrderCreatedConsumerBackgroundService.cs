@@ -52,7 +52,8 @@ public sealed partial class OrderCreatedConsumerBackgroundService
         consumer.Subscribe(
             [
                 OrderCreatedKafkaMessageParser.Topic,
-                InventoryEventKafkaMessageParser.Topic
+                InventoryEventKafkaMessageParser.Topic,
+                PaymentEventKafkaMessageParser.Topic
             ]);
 
         LogConsumerStarted(
@@ -182,6 +183,26 @@ public sealed partial class OrderCreatedConsumerBackgroundService
                         cancellationToken)
                     .ConfigureAwait(false),
 
+            (
+                PaymentEventKafkaMessageParser.Topic,
+                PaymentEventKafkaMessageParser.PaymentCapturedMessageType) =>
+                await ProcessPaymentCapturedAsync(
+                        scope.ServiceProvider,
+                        result,
+                        receivedAtUtc,
+                        cancellationToken)
+                    .ConfigureAwait(false),
+
+            (
+                PaymentEventKafkaMessageParser.Topic,
+                PaymentEventKafkaMessageParser.PaymentFailedMessageType) =>
+                await ProcessPaymentFailedAsync(
+                        scope.ServiceProvider,
+                        result,
+                        receivedAtUtc,
+                        cancellationToken)
+                    .ConfigureAwait(false),
+
             _ => throw new InvalidDataException(
                 $"Unsupported Saga event '{messageType}' from topic '{result.Topic}'.")
         };
@@ -269,6 +290,50 @@ public sealed partial class OrderCreatedConsumerBackgroundService
         var processor =
             serviceProvider.GetRequiredService<
                 InventoryReservationRejectedInboxProcessor>();
+
+        return await processor.ProcessAsync(
+                consumedMessage,
+                _timeProvider.GetUtcNow(),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<bool> ProcessPaymentCapturedAsync(
+        IServiceProvider serviceProvider,
+        ConsumeResult<string, string> result,
+        DateTimeOffset receivedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var consumedMessage =
+            PaymentEventKafkaMessageParser.ParseCaptured(
+                result,
+                receivedAtUtc);
+
+        var processor =
+            serviceProvider.GetRequiredService<
+                PaymentCapturedInboxProcessor>();
+
+        return await processor.ProcessAsync(
+                consumedMessage,
+                _timeProvider.GetUtcNow(),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<bool> ProcessPaymentFailedAsync(
+        IServiceProvider serviceProvider,
+        ConsumeResult<string, string> result,
+        DateTimeOffset receivedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var consumedMessage =
+            PaymentEventKafkaMessageParser.ParseFailed(
+                result,
+                receivedAtUtc);
+
+        var processor =
+            serviceProvider.GetRequiredService<
+                PaymentFailedInboxProcessor>();
 
         return await processor.ProcessAsync(
                 consumedMessage,
