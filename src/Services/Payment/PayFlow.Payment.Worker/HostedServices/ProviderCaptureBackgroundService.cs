@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using PayFlow.Payment.Application.Abstractions;
 using PayFlow.Payment.Application.Provider;
 
 namespace PayFlow.Payment.Worker.HostedServices;
@@ -9,23 +10,29 @@ public sealed partial class ProviderCaptureBackgroundService
     : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
-    private readonly ProviderCaptureWorkerOptions _options;
+    private readonly ProviderCaptureWorkerOptions _workerOptions;
+    private readonly ProviderCaptureExecutorOptions _executorOptions;
+    private readonly TimeProvider _timeProvider;
     private readonly ILogger<ProviderCaptureBackgroundService> _logger;
 
     public ProviderCaptureBackgroundService(
         IServiceScopeFactory scopeFactory,
-        ProviderCaptureWorkerOptions options,
+        ProviderCaptureWorkerOptions workerOptions,
+        ProviderCaptureExecutorOptions executorOptions,
+        TimeProvider timeProvider,
         ILogger<ProviderCaptureBackgroundService> logger)
     {
         _scopeFactory = scopeFactory;
-        _options = options;
+        _workerOptions = workerOptions;
+        _executorOptions = executorOptions;
+        _timeProvider = timeProvider;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(
         CancellationToken stoppingToken)
     {
-        if (!_options.Enabled)
+        if (!_workerOptions.Enabled)
         {
             return;
         }
@@ -36,16 +43,10 @@ public sealed partial class ProviderCaptureBackgroundService
 
             try
             {
-                await using var scope =
-                    _scopeFactory.CreateAsyncScope();
-
-                var executor =
-                    scope.ServiceProvider
-                        .GetRequiredService<ProviderCaptureExecutor>();
-
                 processed =
-                    await executor.ExecuteNextAsync(
-                        stoppingToken);
+                    await ExecuteIterationAsync(
+                        stoppingToken)
+                    .ConfigureAwait(false);
             }
             catch (OperationCanceledException)
                 when (stoppingToken.IsCancellationRequested)
@@ -62,10 +63,98 @@ public sealed partial class ProviderCaptureBackgroundService
             if (!processed)
             {
                 await Task.Delay(
-                    _options.PollInterval,
-                    stoppingToken);
+                    _workerOptions.PollInterval,
+                    stoppingToken)
+                    .ConfigureAwait(false);
             }
         }
+    }
+
+    private async Task<bool> ExecuteIterationAsync(
+        CancellationToken cancellationToken)
+    {
+        var claimAtUtc =
+            _timeProvider.GetUtcNow();
+
+        ProviderCaptureWorkItem? workItem;
+
+        await using (var claimScope =
+            _scopeFactory.CreateAsyncScope())
+        {
+            var repository =
+                claimScope.ServiceProvider
+                    .GetRequiredService<
+                        IProviderOperationExecutionRepository>();
+
+            workItem =
+                await repository.ClaimNextCaptureAsync(
+                    claimAtUtc,
+                    claimAtUtc.Subtract(
+                        _executorOptions.StaleProcessingAfter),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        if (workItem is null)
+        {
+            return false;
+        }
+
+        if (workItem.CorrelationId is not { } correlationId
+            || correlationId == Guid.Empty)
+        {
+            throw new InvalidOperationException(
+                "Claimed provider operation is missing CorrelationId.");
+        }
+
+        PaymentProviderCaptureResult result;
+
+        await using (var providerScope =
+            _scopeFactory.CreateAsyncScope())
+        {
+            var provider =
+                providerScope.ServiceProvider
+                    .GetRequiredService<IPaymentProvider>();
+
+            result =
+                await provider.CaptureAsync(
+                    new PaymentProviderCaptureRequest(
+                        workItem.PaymentId,
+                        workItem.OrderId,
+                        workItem.Amount,
+                        workItem.Currency,
+                        workItem.ProviderIdempotencyKey),
+                    cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        var completedAtUtc =
+            _timeProvider.GetUtcNow();
+
+        await using (var finalizationScope =
+            _scopeFactory.CreateAsyncScope())
+        {
+            var finalizer =
+                finalizationScope.ServiceProvider
+                    .GetRequiredService<
+                        IProviderCaptureOutcomeFinalizer>();
+
+            await finalizer.FinalizeAsync(
+                new ProviderCaptureCompletionContext(
+                    workItem.PaymentId,
+                    workItem.OrderId,
+                    correlationId,
+                    workItem.CausationId,
+                    workItem.TraceParent),
+                result,
+                completedAtUtc,
+                completedAtUtc.Add(
+                    _executorOptions.AmbiguousRetryDelay),
+                cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return true;
     }
 
     [LoggerMessage(

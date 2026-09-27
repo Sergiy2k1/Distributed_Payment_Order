@@ -93,9 +93,6 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IProviderCaptureOutcomeFinalizer,
     ProviderCaptureOutcomeFinalizer>();
-builder.Services.AddScoped<
-    ProviderCaptureExecutor>();
-
 builder.Services.AddSingleton(
     executorOptions);
 builder.Services.AddSingleton(
