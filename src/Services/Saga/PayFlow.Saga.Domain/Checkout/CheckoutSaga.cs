@@ -319,6 +319,84 @@ public sealed class CheckoutSaga
         Version++;
     }
 
+    public void ConfirmPaymentCaptured(
+        Guid paymentId,
+        DateTimeOffset occurredAtUtc)
+    {
+        ValidateIdentity(paymentId, nameof(paymentId));
+        EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+
+        if (Status == CheckoutSagaStatus.WaitingForInventoryCommit)
+        {
+            if (PaymentId == paymentId)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException(
+                "PaymentCaptured references a different Payment.");
+        }
+
+        if (Status != CheckoutSagaStatus.WaitingForPayment)
+        {
+            throw new InvalidOperationException(
+                $"Checkout Saga cannot confirm payment capture from {Status}.");
+        }
+
+        if (PaymentId != paymentId)
+        {
+            throw new InvalidOperationException(
+                "PaymentCaptured PaymentId does not match persisted Saga PaymentId.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            occurredAtUtc,
+            UpdatedAtUtc);
+
+        Status = CheckoutSagaStatus.WaitingForInventoryCommit;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
+    public void RejectPaymentCapture(
+        Guid paymentId,
+        DateTimeOffset occurredAtUtc)
+    {
+        ValidateIdentity(paymentId, nameof(paymentId));
+        EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+
+        if (Status == CheckoutSagaStatus.CompensatingInventory)
+        {
+            if (PaymentId == paymentId)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException(
+                "PaymentFailed references a different Payment.");
+        }
+
+        if (Status != CheckoutSagaStatus.WaitingForPayment)
+        {
+            throw new InvalidOperationException(
+                $"Checkout Saga cannot reject payment capture from {Status}.");
+        }
+
+        if (PaymentId != paymentId)
+        {
+            throw new InvalidOperationException(
+                "PaymentFailed PaymentId does not match persisted Saga PaymentId.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            occurredAtUtc,
+            UpdatedAtUtc);
+
+        Status = CheckoutSagaStatus.CompensatingInventory;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
     public void RejectInventoryReservation(
         Guid reservationId,
         DateTimeOffset occurredAtUtc)
