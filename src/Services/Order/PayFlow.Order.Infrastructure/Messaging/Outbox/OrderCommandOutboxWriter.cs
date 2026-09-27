@@ -23,13 +23,33 @@ public sealed class OrderCommandOutboxWriter
         CancellationToken cancellationToken = default)
     {
         var outboxMessage =
-            OrderProcessingStartedOutboxMapper.Map(
-                domainEvent,
-                Guid.NewGuid(),
-                Guid.NewGuid(),
-                correlationId,
-                causationId,
-                traceParent);
+            (domainEvent.PreviousStatus, domainEvent.CurrentStatus) switch
+            {
+                (
+                    Order.Domain.Orders.OrderStatus.Pending,
+                    Order.Domain.Orders.OrderStatus.Processing) =>
+                    OrderProcessingStartedOutboxMapper.Map(
+                        domainEvent,
+                        Guid.NewGuid(),
+                        Guid.NewGuid(),
+                        correlationId,
+                        causationId,
+                        traceParent),
+
+                (
+                    Order.Domain.Orders.OrderStatus.Processing,
+                    Order.Domain.Orders.OrderStatus.Confirmed) =>
+                    OrderConfirmedOutboxMapper.Map(
+                        domainEvent,
+                        Guid.NewGuid(),
+                        Guid.NewGuid(),
+                        correlationId,
+                        causationId,
+                        traceParent),
+
+                _ => throw new NotSupportedException(
+                    $"Order transition '{domainEvent.PreviousStatus}' -> '{domainEvent.CurrentStatus}' does not have an Outbox mapping.")
+            };
 
         await _dbContext.OutboxMessages
             .AddAsync(
