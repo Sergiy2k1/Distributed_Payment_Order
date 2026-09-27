@@ -110,9 +110,14 @@ builder.Services.AddScoped<
     IConsumeInventoryMessageHandler,
     ConsumeInventoryMessageHandler>();
 builder.Services.AddScoped<
+    IReleaseInventoryMessageHandler,
+    ReleaseInventoryMessageHandler>();
+builder.Services.AddScoped<
     ReserveInventoryInboxProcessor>();
 builder.Services.AddScoped<
     ConsumeInventoryInboxProcessor>();
+builder.Services.AddScoped<
+    ReleaseInventoryInboxProcessor>();
 
 builder.Services.AddScoped<
     IOutboxMessageRepository,
