@@ -2,6 +2,7 @@
   <Project Path="src/Services/Payment/PayFlow.Payment.Application/PayFlow.Payment.Application.csproj" />
   <Project Path="src/Services/Payment/PayFlow.Payment.Domain/PayFlow.Payment.Domain.csproj" />
   <Project Path="src/Services/Payment/PayFlow.Payment.Infrastructure/PayFlow.Payment.Infrastructure.csproj" />
+  <Project Path="src/Services/Payment/PayFlow.Payment.Worker/PayFlow.Payment.Worker.csproj" />
   <Project Path="src/Services/Inventory/PayFlow.Inventory.Application/PayFlow.Inventory.Application.csproj" />
   <Project Path="src/Services/Inventory/PayFlow.Inventory.Domain/PayFlow.Inventory.Domain.csproj" />
   <Project Path="src/Services/Inventory/PayFlow.Inventory.Infrastructure/PayFlow.Inventory.Infrastructure.csproj" />
