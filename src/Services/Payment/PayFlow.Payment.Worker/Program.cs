@@ -1,9 +1,13 @@
+using Confluent.Kafka;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using PayFlow.Payment.Application.Abstractions;
+using PayFlow.Payment.Application.Capture;
 using PayFlow.Payment.Application.Provider;
+using PayFlow.Payment.Infrastructure.Messaging;
+using PayFlow.Payment.Infrastructure.Messaging.Kafka;
 using PayFlow.Payment.Infrastructure.Messaging.Outbox;
 using PayFlow.Payment.Infrastructure.Persistence;
 using PayFlow.Payment.Infrastructure.Persistence.Repositories;
@@ -35,7 +39,7 @@ var executorOptions =
             "AmbiguousRetryDelay",
             TimeSpan.FromSeconds(30)));
 
-var workerOptions =
+var providerWorkerOptions =
     new ProviderCaptureWorkerOptions(
         executorSection.GetValue(
             "Enabled",
@@ -68,6 +72,66 @@ var providerOptions =
             "Timeout",
             TimeSpan.FromSeconds(10)));
 
+var kafkaSection =
+    builder.Configuration.GetSection("Kafka");
+
+var paymentWorkerOptions =
+    new PaymentWorkerOptions(
+        kafkaSection.GetValue<string>(
+            "BootstrapServers")
+            ?? "localhost:9092",
+        kafkaSection.GetValue<string>(
+            "ConsumerGroup")
+            ?? CapturePaymentInboxProcessor.ConsumerName,
+        kafkaSection.GetValue(
+            "ConsumeErrorDelay",
+            TimeSpan.FromSeconds(1)));
+
+var outboxSection =
+    builder.Configuration.GetSection(
+        "OutboxPublisher");
+
+var outboxPublisherOptions =
+    new OutboxPublisherOptions(
+        outboxSection.GetValue(
+            "BatchSize",
+            50),
+        outboxSection.GetValue(
+            "LeaseDuration",
+            TimeSpan.FromSeconds(30)),
+        outboxSection.GetValue(
+            "BaseRetryDelay",
+            TimeSpan.FromSeconds(5)),
+        outboxSection.GetValue(
+            "MaxRetryDelay",
+            TimeSpan.FromMinutes(1)));
+
+var outboxWorkerOptions =
+    new OutboxPublisherWorkerOptions(
+        outboxSection.GetValue(
+            "Enabled",
+            false),
+        outboxSection.GetValue(
+            "PollInterval",
+            TimeSpan.FromSeconds(1)));
+
+var kafkaProducerOptions =
+    new KafkaProducerOptions(
+        paymentWorkerOptions.BootstrapServers,
+        kafkaSection.GetValue<string>(
+            "ClientId")
+            ?? "payflow-payment",
+        kafkaSection.GetValue(
+            "MessageTimeout",
+            TimeSpan.FromSeconds(10)));
+
+if (kafkaProducerOptions.MessageTimeout
+    >= outboxPublisherOptions.LeaseDuration)
+{
+    throw new InvalidOperationException(
+        "Kafka MessageTimeout must be shorter than Payment Outbox LeaseDuration.");
+}
+
 builder.Services.AddDbContext<PaymentDbContext>(
     options =>
         options.UseNpgsql(connectionString));
@@ -93,14 +157,43 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IProviderCaptureOutcomeFinalizer,
     ProviderCaptureOutcomeFinalizer>();
-builder.Services.AddSingleton(
-    executorOptions);
-builder.Services.AddSingleton(
-    workerOptions);
-builder.Services.AddSingleton(
-    providerOptions);
-builder.Services.AddSingleton(
-    TimeProvider.System);
+
+builder.Services.AddScoped<
+    ICapturePaymentMessageHandler,
+    CapturePaymentMessageHandler>();
+builder.Services.AddScoped<
+    InboxMessageRepository>();
+builder.Services.AddScoped<
+    CapturePaymentInboxProcessor>();
+
+builder.Services.AddScoped<
+    IOutboxMessageRepository,
+    OutboxMessageRepository>();
+builder.Services.AddScoped<
+    OutboxPublisher>();
+
+builder.Services.AddSingleton(executorOptions);
+builder.Services.AddSingleton(providerWorkerOptions);
+builder.Services.AddSingleton(providerOptions);
+builder.Services.AddSingleton(paymentWorkerOptions);
+builder.Services.AddSingleton(outboxPublisherOptions);
+builder.Services.AddSingleton(outboxWorkerOptions);
+builder.Services.AddSingleton(kafkaProducerOptions);
+builder.Services.AddSingleton(TimeProvider.System);
+
+builder.Services.AddSingleton<
+    IProducer<string, string>>(
+    _ => new ProducerBuilder<string, string>(
+            KafkaProducerConfigFactory.Create(
+                kafkaProducerOptions))
+        .Build());
+
+builder.Services.AddSingleton<
+    IKafkaMessageProducer,
+    ConfluentKafkaMessageProducer>();
+builder.Services.AddSingleton<
+    IOutboxTransport,
+    KafkaOutboxTransport>();
 
 builder.Services.AddHttpClient<
         IPaymentProvider,
@@ -113,6 +206,10 @@ builder.Services.AddHttpClient<
                 providerOptions.Timeout;
         });
 
+builder.Services.AddHostedService<
+    CapturePaymentConsumerBackgroundService>();
+builder.Services.AddHostedService<
+    OutboxPublisherBackgroundService>();
 builder.Services.AddHostedService<
     ProviderCaptureBackgroundService>();
 
