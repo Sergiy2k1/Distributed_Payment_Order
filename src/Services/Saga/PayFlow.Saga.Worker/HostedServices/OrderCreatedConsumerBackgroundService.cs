@@ -184,6 +184,16 @@ public sealed partial class OrderCreatedConsumerBackgroundService
                     .ConfigureAwait(false),
 
             (
+                InventoryEventKafkaMessageParser.Topic,
+                InventoryEventKafkaMessageParser.InventoryConsumedMessageType) =>
+                await ProcessInventoryConsumedAsync(
+                        scope.ServiceProvider,
+                        result,
+                        receivedAtUtc,
+                        cancellationToken)
+                    .ConfigureAwait(false),
+
+            (
                 PaymentEventKafkaMessageParser.Topic,
                 PaymentEventKafkaMessageParser.PaymentCapturedMessageType) =>
                 await ProcessPaymentCapturedAsync(
@@ -290,6 +300,28 @@ public sealed partial class OrderCreatedConsumerBackgroundService
         var processor =
             serviceProvider.GetRequiredService<
                 InventoryReservationRejectedInboxProcessor>();
+
+        return await processor.ProcessAsync(
+                consumedMessage,
+                _timeProvider.GetUtcNow(),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<bool> ProcessInventoryConsumedAsync(
+        IServiceProvider serviceProvider,
+        ConsumeResult<string, string> result,
+        DateTimeOffset receivedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var consumedMessage =
+            InventoryEventKafkaMessageParser.ParseConsumed(
+                result,
+                receivedAtUtc);
+
+        var processor =
+            serviceProvider.GetRequiredService<
+                InventoryConsumedInboxProcessor>();
 
         return await processor.ProcessAsync(
                 consumedMessage,
