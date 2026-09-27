@@ -358,6 +358,70 @@ public sealed class CheckoutSaga
         Version++;
     }
 
+    public void ConfirmInventoryConsumed(
+        Guid reservationId,
+        DateTimeOffset occurredAtUtc)
+    {
+        ValidateIdentity(reservationId, nameof(reservationId));
+        EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+
+        if (Status == CheckoutSagaStatus.WaitingForOrderConfirmation)
+        {
+            if (ReservationId == reservationId)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException(
+                "InventoryConsumed references a different reservation.");
+        }
+
+        if (Status != CheckoutSagaStatus.WaitingForInventoryCommit)
+        {
+            throw new InvalidOperationException(
+                $"Checkout Saga cannot confirm inventory consumption from {Status}.");
+        }
+
+        if (ReservationId != reservationId)
+        {
+            throw new InvalidOperationException(
+                "InventoryConsumed reservation identity does not match persisted Saga reservation.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            occurredAtUtc,
+            UpdatedAtUtc);
+
+        Status = CheckoutSagaStatus.WaitingForOrderConfirmation;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
+    public void CompleteSuccessfully(
+        DateTimeOffset occurredAtUtc)
+    {
+        EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+
+        if (Status == CheckoutSagaStatus.Completed)
+        {
+            return;
+        }
+
+        if (Status != CheckoutSagaStatus.WaitingForOrderConfirmation)
+        {
+            throw new InvalidOperationException(
+                $"Checkout Saga cannot complete successfully from {Status}.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            occurredAtUtc,
+            UpdatedAtUtc);
+
+        Status = CheckoutSagaStatus.Completed;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
     public void RejectPaymentCapture(
         Guid paymentId,
         DateTimeOffset occurredAtUtc)
