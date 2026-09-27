@@ -194,6 +194,74 @@ public sealed class CheckoutSagaTests
     }
 
     [Fact]
+    public void ConfirmPaymentCapturedMovesSagaToWaitingForInventoryCommit()
+    {
+        var saga = CheckoutSaga.Start(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CreateItems(),
+            "USD",
+            35m,
+            StartedAtUtc,
+            DeadlineAtUtc);
+        var reservationId = Guid.NewGuid();
+        var paymentId = Guid.NewGuid();
+
+        saga.BeginInventoryReservation(
+            reservationId,
+            StartedAtUtc.AddSeconds(1),
+            DeadlineAtUtc);
+
+        saga.ConfirmInventoryReserved(
+            reservationId,
+            paymentId,
+            StartedAtUtc.AddSeconds(2));
+
+        saga.ConfirmPaymentCaptured(
+            paymentId,
+            StartedAtUtc.AddSeconds(3));
+
+        Assert.Equal(
+            CheckoutSagaStatus.WaitingForInventoryCommit,
+            saga.Status);
+        Assert.Equal(3, saga.Version);
+    }
+
+    [Fact]
+    public void RejectPaymentCaptureMovesSagaToCompensatingInventory()
+    {
+        var saga = CheckoutSaga.Start(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CreateItems(),
+            "USD",
+            35m,
+            StartedAtUtc,
+            DeadlineAtUtc);
+        var reservationId = Guid.NewGuid();
+        var paymentId = Guid.NewGuid();
+
+        saga.BeginInventoryReservation(
+            reservationId,
+            StartedAtUtc.AddSeconds(1),
+            DeadlineAtUtc);
+
+        saga.ConfirmInventoryReserved(
+            reservationId,
+            paymentId,
+            StartedAtUtc.AddSeconds(2));
+
+        saga.RejectPaymentCapture(
+            paymentId,
+            StartedAtUtc.AddSeconds(3));
+
+        Assert.Equal(
+            CheckoutSagaStatus.CompensatingInventory,
+            saga.Status);
+        Assert.Equal(3, saga.Version);
+    }
+
+    [Fact]
     public void RejectInventoryReservationMovesSagaToOrderCancellation()
     {
         var saga = CheckoutSaga.Start(
