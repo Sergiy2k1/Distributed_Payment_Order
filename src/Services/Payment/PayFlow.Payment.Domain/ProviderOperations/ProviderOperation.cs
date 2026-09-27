@@ -89,6 +89,31 @@ public sealed class ProviderOperation
             traceParent);
     }
 
+    public static ProviderOperation CreateRefund(
+        Guid refundId,
+        Guid paymentId,
+        DateTimeOffset createdAtUtc,
+        Guid correlationId,
+        Guid causationId,
+        string? traceParent)
+    {
+        ValidateIdentity(refundId, nameof(refundId));
+        ValidateIdentity(paymentId, nameof(paymentId));
+        ValidateIdentity(correlationId, nameof(correlationId));
+        ValidateIdentity(causationId, nameof(causationId));
+        EnsureUtc(createdAtUtc, nameof(createdAtUtc));
+
+        return new ProviderOperation(
+            refundId,
+            paymentId,
+            "Refund",
+            $"payment:{paymentId:D}:refund:{refundId:D}:v1",
+            createdAtUtc,
+            correlationId,
+            causationId,
+            traceParent);
+    }
+
     public static ProviderOperation Rehydrate(
         Guid providerOperationId,
         Guid businessOperationId,

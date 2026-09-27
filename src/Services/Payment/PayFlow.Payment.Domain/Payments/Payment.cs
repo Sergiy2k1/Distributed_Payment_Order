@@ -92,18 +92,20 @@ public sealed class Payment
             EnsureUtc(captured, nameof(capturedAtUtc));
         }
 
-        if (status == PaymentStatus.Captured
-            && capturedAtUtc is null)
+        if (status is PaymentStatus.Captured
+            or PaymentStatus.RefundPending
+            or PaymentStatus.Refunded)
         {
-            throw new InvalidOperationException(
-                "Captured payment must have CapturedAtUtc.");
+            if (capturedAtUtc is null)
+            {
+                throw new InvalidOperationException(
+                    "Captured or refunded payment states must preserve CapturedAtUtc.");
+            }
         }
-
-        if (status != PaymentStatus.Captured
-            && capturedAtUtc is not null)
+        else if (capturedAtUtc is not null)
         {
             throw new InvalidOperationException(
-                "Only captured payment may have CapturedAtUtc.");
+                "Only captured or refund-related payment states may have CapturedAtUtc.");
         }
 
         if (status == PaymentStatus.Failed
@@ -168,6 +170,48 @@ public sealed class Payment
         CapturedAtUtc = capturedAtUtc;
         UpdatedAtUtc = capturedAtUtc;
         FailureReasonCode = null;
+        Version++;
+    }
+
+    public void StartRefund(
+        DateTimeOffset occurredAtUtc)
+    {
+        EnsureTransitionTime(occurredAtUtc);
+
+        if (Status == PaymentStatus.RefundPending)
+        {
+            return;
+        }
+
+        if (Status != PaymentStatus.Captured)
+        {
+            throw new InvalidOperationException(
+                $"Payment cannot start refund from {Status}.");
+        }
+
+        Status = PaymentStatus.RefundPending;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
+    public void MarkRefunded(
+        DateTimeOffset occurredAtUtc)
+    {
+        EnsureTransitionTime(occurredAtUtc);
+
+        if (Status == PaymentStatus.Refunded)
+        {
+            return;
+        }
+
+        if (Status != PaymentStatus.RefundPending)
+        {
+            throw new InvalidOperationException(
+                $"Payment cannot be marked refunded from {Status}.");
+        }
+
+        Status = PaymentStatus.Refunded;
+        UpdatedAtUtc = occurredAtUtc;
         Version++;
     }
 

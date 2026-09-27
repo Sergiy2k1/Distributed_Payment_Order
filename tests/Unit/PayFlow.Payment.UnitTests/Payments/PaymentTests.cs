@@ -36,6 +36,21 @@ public sealed class PaymentTests
     }
 
     [Fact]
+    public void CapturedPaymentCanMoveThroughRefundStates()
+    {
+        var payment = CreatePayment();
+
+        payment.StartProcessing(CreatedAtUtc.AddSeconds(1));
+        payment.MarkCaptured(CreatedAtUtc.AddSeconds(2));
+        payment.StartRefund(CreatedAtUtc.AddSeconds(3));
+        payment.MarkRefunded(CreatedAtUtc.AddSeconds(4));
+
+        Assert.Equal(PaymentStatus.Refunded, payment.Status);
+        Assert.Equal(CreatedAtUtc.AddSeconds(2), payment.CapturedAtUtc);
+        Assert.Equal(4, payment.Version);
+    }
+
+    [Fact]
     public void ProcessingCanBecomeFailed()
     {
         var payment = CreatePayment();
