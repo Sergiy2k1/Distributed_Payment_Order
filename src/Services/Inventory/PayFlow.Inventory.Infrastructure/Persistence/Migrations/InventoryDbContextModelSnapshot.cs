@@ -260,6 +260,10 @@ partial class InventoryDbContextModelSnapshot
                     .HasColumnType("character varying(128)")
                     .HasColumnName("rejection_reason_code");
 
+                entity.Property<Guid?>("RestockOperationId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("restock_operation_id");
+
                 entity.Property<string>("Status")
                     .IsRequired()
                     .HasMaxLength(32)
@@ -281,6 +285,13 @@ partial class InventoryDbContextModelSnapshot
                     .HasDatabaseName(
                         "IX_inventory_reservations_order_id");
 
+                entity.HasIndex("RestockOperationId")
+                    .IsUnique()
+                    .HasDatabaseName(
+                        "IX_inventory_reservations_restock_operation_id")
+                    .HasFilter(
+                        "restock_operation_id IS NOT NULL");
+
                 entity.ToTable(
                     "inventory_reservations",
                     table =>
@@ -292,6 +303,10 @@ partial class InventoryDbContextModelSnapshot
                         table.HasCheckConstraint(
                             "ck_inventory_reservations_rejection_reason",
                             "(status = 'Rejected' AND rejection_reason_code IS NOT NULL) OR (status <> 'Rejected' AND rejection_reason_code IS NULL)");
+
+                        table.HasCheckConstraint(
+                            "ck_inventory_reservations_restock_operation",
+                            "(status = 'Restocked' AND restock_operation_id IS NOT NULL) OR (status <> 'Restocked' AND restock_operation_id IS NULL)");
                     });
             });
 

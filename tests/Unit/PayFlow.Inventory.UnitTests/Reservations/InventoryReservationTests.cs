@@ -93,6 +93,53 @@ public sealed class InventoryReservationTests
     }
 
     [Fact]
+    public void RestockTransitionsConsumedToRestockedAndIsIdempotent()
+    {
+        var reservation = CreateReservation();
+        var restockOperationId = Guid.NewGuid();
+        var restockedAtUtc =
+            CreatedAtUtc.AddSeconds(3);
+
+        reservation.MarkReserved(
+            CreatedAtUtc.AddSeconds(1));
+        reservation.Consume(
+            CreatedAtUtc.AddSeconds(2));
+        reservation.Restock(
+            restockOperationId,
+            restockedAtUtc);
+        reservation.Restock(
+            restockOperationId,
+            restockedAtUtc);
+
+        Assert.Equal(
+            InventoryReservationStatus.Restocked,
+            reservation.Status);
+        Assert.Equal(
+            restockOperationId,
+            reservation.RestockOperationId);
+        Assert.Equal(3, reservation.Version);
+    }
+
+    [Fact]
+    public void RestockRejectsDifferentOperationAfterCompletion()
+    {
+        var reservation = CreateReservation();
+
+        reservation.MarkReserved(
+            CreatedAtUtc.AddSeconds(1));
+        reservation.Consume(
+            CreatedAtUtc.AddSeconds(2));
+        reservation.Restock(
+            Guid.NewGuid(),
+            CreatedAtUtc.AddSeconds(3));
+
+        Assert.Throws<InvalidOperationException>(
+            () => reservation.Restock(
+                Guid.NewGuid(),
+                CreatedAtUtc.AddSeconds(4)));
+    }
+
+    [Fact]
     public void ReleaseTransitionsReservedToReleased()
     {
         var reservation = CreateReservation();

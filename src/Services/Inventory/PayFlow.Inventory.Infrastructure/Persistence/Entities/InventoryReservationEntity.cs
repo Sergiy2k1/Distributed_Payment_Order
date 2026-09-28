@@ -16,6 +16,8 @@ public sealed class InventoryReservationEntity
 
     public string? RejectionReasonCode { get; set; }
 
+    public Guid? RestockOperationId { get; set; }
+
     public long Version { get; set; }
 
     public List<InventoryReservationItemEntity> Items { get; set; } = [];

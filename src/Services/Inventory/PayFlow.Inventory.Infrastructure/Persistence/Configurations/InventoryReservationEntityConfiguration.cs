@@ -22,6 +22,11 @@ public sealed class InventoryReservationEntityConfiguration
                     "ck_inventory_reservations_rejection_reason",
                     "(status = 'Rejected' AND rejection_reason_code IS NOT NULL) OR "
                     + "(status <> 'Rejected' AND rejection_reason_code IS NULL)");
+
+                table.HasCheckConstraint(
+                    "ck_inventory_reservations_restock_operation",
+                    "(status = 'Restocked' AND restock_operation_id IS NOT NULL) OR "
+                    + "(status <> 'Restocked' AND restock_operation_id IS NULL)");
             });
 
         builder.HasKey(
@@ -64,6 +69,10 @@ public sealed class InventoryReservationEntityConfiguration
             .HasMaxLength(128);
 
         builder.Property(
+                reservation => reservation.RestockOperationId)
+            .HasColumnName("restock_operation_id");
+
+        builder.Property(
                 reservation => reservation.Version)
             .HasColumnName("version")
             .IsConcurrencyToken()
@@ -73,6 +82,14 @@ public sealed class InventoryReservationEntityConfiguration
             reservation => reservation.OrderId)
             .HasDatabaseName(
                 "IX_inventory_reservations_order_id");
+
+        builder.HasIndex(
+                reservation => reservation.RestockOperationId)
+            .IsUnique()
+            .HasFilter(
+                "restock_operation_id IS NOT NULL")
+            .HasDatabaseName(
+                "IX_inventory_reservations_restock_operation_id");
 
         builder.HasMany(
                 reservation => reservation.Items)

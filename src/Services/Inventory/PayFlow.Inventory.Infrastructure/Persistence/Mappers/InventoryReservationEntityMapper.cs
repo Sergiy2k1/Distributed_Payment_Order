@@ -36,7 +36,8 @@ public static class InventoryReservationEntityMapper
             entity.UpdatedAtUtc,
             entity.ExpiresAtUtc,
             entity.RejectionReasonCode,
-            entity.Version);
+            entity.Version,
+            entity.RestockOperationId);
     }
 
     public static InventoryReservationEntity ToEntity(
@@ -54,6 +55,8 @@ public static class InventoryReservationEntityMapper
             ExpiresAtUtc = reservation.ExpiresAtUtc,
             RejectionReasonCode =
                 reservation.RejectionReasonCode,
+            RestockOperationId =
+                reservation.RestockOperationId,
             Version = reservation.Version,
             Items = reservation.Items
                 .Select(

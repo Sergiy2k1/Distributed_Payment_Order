@@ -82,4 +82,74 @@ public sealed class InventoryReservationPersistenceTests(
                         == reservation.ReservationId,
                     cancellationToken));
     }
+
+    [Fact]
+    public async Task RestockOperationRoundTripsThroughPostgreSql()
+    {
+        var cancellationToken =
+            TestContext.Current.CancellationToken;
+        var createdAtUtc =
+            new DateTimeOffset(
+                2026,
+                9,
+                29,
+                0,
+                0,
+                0,
+                TimeSpan.Zero);
+        var restockOperationId =
+            Guid.NewGuid();
+
+        var reservation =
+            InventoryReservation.Create(
+                Guid.NewGuid(),
+                Guid.NewGuid(),
+                [
+                    InventoryReservationItem.Create(
+                        $"SKU-RESTOCK-{Guid.NewGuid():N}",
+                        2)
+                ],
+                createdAtUtc,
+                createdAtUtc.AddMinutes(30));
+
+        reservation.MarkReserved(
+            createdAtUtc.AddSeconds(1));
+        reservation.Consume(
+            createdAtUtc.AddSeconds(2));
+        reservation.Restock(
+            restockOperationId,
+            createdAtUtc.AddSeconds(3));
+
+        await using (var dbContext =
+            fixture.CreateDbContext())
+        {
+            await new InventoryReservationRepository(
+                    dbContext)
+                .AddAsync(
+                    reservation,
+                    cancellationToken);
+
+            await dbContext
+                .SaveChangesAsync(cancellationToken);
+        }
+
+        await using var verificationDbContext =
+            fixture.CreateDbContext();
+
+        var loaded =
+            await new InventoryReservationRepository(
+                    verificationDbContext)
+                .GetByIdAsync(
+                    reservation.ReservationId,
+                    cancellationToken);
+
+        Assert.NotNull(loaded);
+        Assert.Equal(
+            InventoryReservationStatus.Restocked,
+            loaded.Status);
+        Assert.Equal(
+            restockOperationId,
+            loaded.RestockOperationId);
+        Assert.Equal(3, loaded.Version);
+    }
 }

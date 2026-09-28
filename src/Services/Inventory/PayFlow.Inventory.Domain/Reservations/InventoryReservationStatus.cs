@@ -7,5 +7,6 @@ public enum InventoryReservationStatus
     Rejected = 2,
     Consumed = 3,
     Released = 4,
-    Expired = 5
+    Expired = 5,
+    Restocked = 6
 }

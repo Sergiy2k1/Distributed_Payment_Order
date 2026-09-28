@@ -19,6 +19,7 @@ public sealed class InventoryReservation
         UpdatedAtUtc = createdAtUtc;
         ExpiresAtUtc = expiresAtUtc;
         RejectionReasonCode = null;
+        RestockOperationId = null;
         Version = 0;
     }
 
@@ -37,6 +38,8 @@ public sealed class InventoryReservation
     public DateTimeOffset ExpiresAtUtc { get; }
 
     public string? RejectionReasonCode { get; private set; }
+
+    public Guid? RestockOperationId { get; private set; }
 
     public long Version { get; private set; }
 
@@ -106,7 +109,8 @@ public sealed class InventoryReservation
         DateTimeOffset updatedAtUtc,
         DateTimeOffset expiresAtUtc,
         string? rejectionReasonCode,
-        long version)
+        long version,
+        Guid? restockOperationId = null)
     {
         var reservation = Create(
             reservationId,
@@ -146,10 +150,27 @@ public sealed class InventoryReservation
                 "Only rejected reservations may contain a rejection reason.");
         }
 
+        if (status == InventoryReservationStatus.Restocked)
+        {
+            if (restockOperationId is null
+                || restockOperationId == Guid.Empty)
+            {
+                throw new InvalidOperationException(
+                    "Restocked reservation must contain a non-empty restock operation ID.");
+            }
+        }
+        else if (restockOperationId is not null)
+        {
+            throw new InvalidOperationException(
+                "Only restocked reservations may contain a restock operation ID.");
+        }
+
         reservation.Status = status;
         reservation.UpdatedAtUtc = updatedAtUtc;
         reservation.RejectionReasonCode =
             rejectionReasonCode;
+        reservation.RestockOperationId =
+            restockOperationId;
         reservation.Version = version;
 
         return reservation;
@@ -235,6 +256,36 @@ public sealed class InventoryReservation
             nameof(Consume));
 
         Status = InventoryReservationStatus.Consumed;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
+    public void Restock(
+        Guid restockOperationId,
+        DateTimeOffset occurredAtUtc)
+    {
+        ValidateIdentity(
+            restockOperationId,
+            nameof(restockOperationId));
+        EnsureTransitionTime(occurredAtUtc);
+
+        if (Status == InventoryReservationStatus.Restocked)
+        {
+            if (RestockOperationId == restockOperationId)
+            {
+                return;
+            }
+
+            throw new InvalidOperationException(
+                "Reservation was already restocked by a different operation.");
+        }
+
+        EnsureCurrentState(
+            InventoryReservationStatus.Consumed,
+            nameof(Restock));
+
+        RestockOperationId = restockOperationId;
+        Status = InventoryReservationStatus.Restocked;
         UpdatedAtUtc = occurredAtUtc;
         Version++;
     }

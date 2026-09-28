@@ -77,6 +77,8 @@ public sealed class InventoryReservationRepository
             reservation.UpdatedAtUtc;
         entity.RejectionReasonCode =
             reservation.RejectionReasonCode;
+        entity.RestockOperationId =
+            reservation.RestockOperationId;
         entity.Version =
             reservation.Version;
 
