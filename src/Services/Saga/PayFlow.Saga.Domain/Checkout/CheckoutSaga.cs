@@ -464,9 +464,9 @@ public sealed class CheckoutSaga
         var mode = Status switch
         {
             CheckoutSagaStatus.WaitingForInventoryCommit =>
-                PostCaptureCompensationMode.ReleaseReservedInventory,
+                global::PayFlow.Saga.Domain.Checkout.PostCaptureCompensationMode.ReleaseReservedInventory,
             CheckoutSagaStatus.WaitingForOrderConfirmation =>
-                PostCaptureCompensationMode.RestockConsumedInventory,
+                global::PayFlow.Saga.Domain.Checkout.PostCaptureCompensationMode.RestockConsumedInventory,
             _ => throw new InvalidOperationException(
                 $"Checkout Saga cannot start post-capture compensation from {Status}.")
         };
