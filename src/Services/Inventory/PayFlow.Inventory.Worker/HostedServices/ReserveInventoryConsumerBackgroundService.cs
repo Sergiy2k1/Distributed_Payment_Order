@@ -132,6 +132,26 @@ public sealed partial class ReserveInventoryConsumerBackgroundService
                         break;
                     }
 
+                    case RestockInventoryKafkaMessageParser.MessageType:
+                    {
+                        var consumedMessage =
+                            RestockInventoryKafkaMessageParser.Parse(
+                                result,
+                                receivedAtUtc);
+
+                        var processor =
+                            scope.ServiceProvider
+                                .GetRequiredService<
+                                    RestockInventoryInboxProcessor>();
+
+                        await processor.ProcessAsync(
+                            consumedMessage,
+                            _timeProvider.GetUtcNow(),
+                            stoppingToken);
+
+                        break;
+                    }
+
                     default:
                         throw new InvalidDataException(
                             $"Unsupported inventory command '{messageType}'.");
