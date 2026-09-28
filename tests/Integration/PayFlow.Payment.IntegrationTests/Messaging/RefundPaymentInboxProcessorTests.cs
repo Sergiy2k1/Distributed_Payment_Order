@@ -3,6 +3,7 @@ using PayFlow.Payment.Application.Messaging;
 using PayFlow.Payment.Application.Refund;
 using PayFlow.Payment.Domain.Payments;
 using PayFlow.Payment.Infrastructure.Messaging;
+using PayFlow.Payment.Infrastructure.Persistence;
 using PayFlow.Payment.Infrastructure.Persistence.Repositories;
 using PayFlow.Payment.IntegrationTests.Infrastructure;
 using PaymentAggregate = PayFlow.Payment.Domain.Payments.Payment;

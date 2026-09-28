@@ -97,6 +97,14 @@ public sealed class ProviderCaptureExecutorTests
         {
             return Task.FromResult(workItem);
         }
+
+        public Task<ProviderRefundWorkItem?> ClaimNextRefundAsync(
+            DateTimeOffset nowUtc,
+            DateTimeOffset staleProcessingBeforeUtc,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<ProviderRefundWorkItem?>(null);
+        }
     }
 
     private sealed class FakeProvider(
@@ -111,6 +119,14 @@ public sealed class ProviderCaptureExecutorTests
         {
             Request = request;
             return Task.FromResult(result);
+        }
+
+        public Task<PaymentProviderRefundResult> RefundAsync(
+            PaymentProviderRefundRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                PaymentProviderRefundResult.Ambiguous("UNUSED"));
         }
     }
 
