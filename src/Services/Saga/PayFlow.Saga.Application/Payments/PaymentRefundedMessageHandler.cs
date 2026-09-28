@@ -79,7 +79,7 @@ public sealed class PaymentRefundedMessageHandler
             return;
         }
 
-        var restockOperationId =
+        Guid? restockOperationId =
             saga.PostCaptureCompensationMode
                 == PostCaptureCompensationMode.RestockConsumedInventory
                 ? Guid.NewGuid()
