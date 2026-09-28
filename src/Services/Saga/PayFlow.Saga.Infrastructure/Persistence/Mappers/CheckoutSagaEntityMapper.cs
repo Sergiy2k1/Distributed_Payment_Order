@@ -19,6 +19,22 @@ public static class CheckoutSagaEntityMapper
                 $"Persisted Checkout Saga status '{entity.Status}' is invalid.");
         }
 
+        PostCaptureCompensationMode? compensationMode = null;
+
+        if (entity.PostCaptureCompensationMode is not null)
+        {
+            if (!Enum.TryParse<PostCaptureCompensationMode>(
+                    entity.PostCaptureCompensationMode,
+                    ignoreCase: false,
+                    out var parsedMode))
+            {
+                throw new InvalidOperationException(
+                    $"Persisted post-capture compensation mode '{entity.PostCaptureCompensationMode}' is invalid.");
+            }
+
+            compensationMode = parsedMode;
+        }
+
         var items = entity.Items
             .OrderBy(item => item.Position)
             .Select(
@@ -42,6 +58,9 @@ public static class CheckoutSagaEntityMapper
             entity.ReservationId,
             entity.ReservationExpiresAtUtc,
             entity.PaymentId,
+            entity.RefundId,
+            compensationMode,
+            entity.RestockOperationId,
             entity.RetryCount,
             entity.NextAttemptAtUtc,
             entity.LastTechnicalErrorCode,
@@ -68,6 +87,10 @@ public static class CheckoutSagaEntityMapper
             ReservationExpiresAtUtc =
                 saga.ReservationExpiresAtUtc,
             PaymentId = saga.PaymentId,
+            RefundId = saga.RefundId,
+            PostCaptureCompensationMode =
+                saga.PostCaptureCompensationMode?.ToString(),
+            RestockOperationId = saga.RestockOperationId,
             RetryCount = saga.RetryCount,
             NextAttemptAtUtc = saga.NextAttemptAtUtc,
             LastTechnicalErrorCode =

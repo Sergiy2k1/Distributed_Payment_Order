@@ -13,6 +13,9 @@ public sealed class CheckoutSagaEntity
     public Guid? ReservationId { get; set; }
     public DateTimeOffset? ReservationExpiresAtUtc { get; set; }
     public Guid? PaymentId { get; set; }
+    public Guid? RefundId { get; set; }
+    public string? PostCaptureCompensationMode { get; set; }
+    public Guid? RestockOperationId { get; set; }
     public int RetryCount { get; set; }
     public DateTimeOffset? NextAttemptAtUtc { get; set; }
     public string? LastTechnicalErrorCode { get; set; }

@@ -18,6 +18,8 @@ public static class InventoryEventKafkaMessageParser
         "InventoryConsumed.v1";
     public const string InventoryReleasedMessageType =
         "InventoryReleased.v1";
+    public const string InventoryRestockedMessageType =
+        "InventoryRestocked.v1";
     public const int SchemaVersion = 1;
     public const string Producer = "Inventory";
 
@@ -143,6 +145,36 @@ public static class InventoryEventKafkaMessageParser
             new InventoryReleasedMessage(
                 parsed.Envelope,
                 payload),
+            parsed.SourceTopic,
+            parsed.SourcePartition,
+            parsed.SourceOffset,
+            receivedAtUtc);
+    }
+
+    public static ConsumedInventoryRestockedMessage ParseRestocked(
+        ConsumeResult<string, string> consumeResult,
+        DateTimeOffset receivedAtUtc)
+    {
+        var parsed = ParseEnvelope(
+            consumeResult,
+            receivedAtUtc,
+            InventoryRestockedMessageType);
+
+        var payload = Deserialize<InventoryRestockedV1>(
+            consumeResult.Message.Value,
+            InventoryRestockedMessageType);
+
+        EnsureOrderId(payload.OrderId, parsed.Envelope.AggregateId);
+
+        if (payload.ReservationId == Guid.Empty
+            || payload.RestockOperationId == Guid.Empty)
+        {
+            throw new InvalidDataException(
+                "InventoryRestocked payload is invalid.");
+        }
+
+        return new ConsumedInventoryRestockedMessage(
+            new InventoryRestockedMessage(parsed.Envelope, payload),
             parsed.SourceTopic,
             parsed.SourcePartition,
             parsed.SourceOffset,

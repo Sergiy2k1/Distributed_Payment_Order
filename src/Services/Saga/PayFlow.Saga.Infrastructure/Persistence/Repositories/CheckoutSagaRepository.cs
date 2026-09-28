@@ -71,6 +71,10 @@ public sealed class CheckoutSagaRepository
         entity.ReservationExpiresAtUtc =
             saga.ReservationExpiresAtUtc;
         entity.PaymentId = saga.PaymentId;
+        entity.RefundId = saga.RefundId;
+        entity.PostCaptureCompensationMode =
+            saga.PostCaptureCompensationMode?.ToString();
+        entity.RestockOperationId = saga.RestockOperationId;
         entity.RetryCount = saga.RetryCount;
         entity.NextAttemptAtUtc = saga.NextAttemptAtUtc;
         entity.LastTechnicalErrorCode =

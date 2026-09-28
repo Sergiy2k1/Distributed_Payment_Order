@@ -158,6 +158,19 @@ partial class SagaDbContextModelSnapshot : ModelSnapshot
                     .HasColumnType("uuid")
                     .HasColumnName("payment_id");
 
+                entity.Property<string>("PostCaptureCompensationMode")
+                    .HasMaxLength(64)
+                    .HasColumnType("character varying(64)")
+                    .HasColumnName("post_capture_compensation_mode");
+
+                entity.Property<Guid?>("RefundId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("refund_id");
+
+                entity.Property<Guid?>("RestockOperationId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("restock_operation_id");
+
                 entity.Property<Guid?>("ReservationId")
                     .HasColumnType("uuid")
                     .HasColumnName("reservation_id");
@@ -209,6 +222,10 @@ partial class SagaDbContextModelSnapshot : ModelSnapshot
                         table.HasCheckConstraint(
                             "ck_checkout_sagas_deadline_after_start",
                             "deadline_at_utc > started_at_utc");
+
+                        table.HasCheckConstraint(
+                            "ck_checkout_sagas_post_capture_compensation_context",
+                            "(refund_id IS NULL AND post_capture_compensation_mode IS NULL AND restock_operation_id IS NULL) OR (refund_id IS NOT NULL AND post_capture_compensation_mode IS NOT NULL)");
 
                         table.HasCheckConstraint(
                             "ck_checkout_sagas_reservation_deadline",

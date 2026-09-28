@@ -224,6 +224,16 @@ public sealed partial class OrderCreatedConsumerBackgroundService
                     .ConfigureAwait(false),
 
             (
+                InventoryEventKafkaMessageParser.Topic,
+                InventoryEventKafkaMessageParser.InventoryRestockedMessageType) =>
+                await ProcessInventoryRestockedAsync(
+                        scope.ServiceProvider,
+                        result,
+                        receivedAtUtc,
+                        cancellationToken)
+                    .ConfigureAwait(false),
+
+            (
                 PaymentEventKafkaMessageParser.Topic,
                 PaymentEventKafkaMessageParser.PaymentCapturedMessageType) =>
                 await ProcessPaymentCapturedAsync(
@@ -237,6 +247,26 @@ public sealed partial class OrderCreatedConsumerBackgroundService
                 PaymentEventKafkaMessageParser.Topic,
                 PaymentEventKafkaMessageParser.PaymentFailedMessageType) =>
                 await ProcessPaymentFailedAsync(
+                        scope.ServiceProvider,
+                        result,
+                        receivedAtUtc,
+                        cancellationToken)
+                    .ConfigureAwait(false),
+
+            (
+                PaymentEventKafkaMessageParser.Topic,
+                PaymentEventKafkaMessageParser.PaymentRefundedMessageType) =>
+                await ProcessPaymentRefundedAsync(
+                        scope.ServiceProvider,
+                        result,
+                        receivedAtUtc,
+                        cancellationToken)
+                    .ConfigureAwait(false),
+
+            (
+                PaymentEventKafkaMessageParser.Topic,
+                PaymentEventKafkaMessageParser.PaymentRefundRejectedMessageType) =>
+                await ProcessPaymentRefundRejectedAsync(
                         scope.ServiceProvider,
                         result,
                         receivedAtUtc,
@@ -426,6 +456,28 @@ public sealed partial class OrderCreatedConsumerBackgroundService
             .ConfigureAwait(false);
     }
 
+    private async Task<bool> ProcessInventoryRestockedAsync(
+        IServiceProvider serviceProvider,
+        ConsumeResult<string, string> result,
+        DateTimeOffset receivedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var consumedMessage =
+            InventoryEventKafkaMessageParser.ParseRestocked(
+                result,
+                receivedAtUtc);
+
+        var processor =
+            serviceProvider.GetRequiredService<
+                InventoryRestockedInboxProcessor>();
+
+        return await processor.ProcessAsync(
+                consumedMessage,
+                _timeProvider.GetUtcNow(),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     private async Task<bool> ProcessPaymentCapturedAsync(
         IServiceProvider serviceProvider,
         ConsumeResult<string, string> result,
@@ -462,6 +514,50 @@ public sealed partial class OrderCreatedConsumerBackgroundService
         var processor =
             serviceProvider.GetRequiredService<
                 PaymentFailedInboxProcessor>();
+
+        return await processor.ProcessAsync(
+                consumedMessage,
+                _timeProvider.GetUtcNow(),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<bool> ProcessPaymentRefundedAsync(
+        IServiceProvider serviceProvider,
+        ConsumeResult<string, string> result,
+        DateTimeOffset receivedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var consumedMessage =
+            PaymentEventKafkaMessageParser.ParseRefunded(
+                result,
+                receivedAtUtc);
+
+        var processor =
+            serviceProvider.GetRequiredService<
+                PaymentRefundedInboxProcessor>();
+
+        return await processor.ProcessAsync(
+                consumedMessage,
+                _timeProvider.GetUtcNow(),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<bool> ProcessPaymentRefundRejectedAsync(
+        IServiceProvider serviceProvider,
+        ConsumeResult<string, string> result,
+        DateTimeOffset receivedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var consumedMessage =
+            PaymentEventKafkaMessageParser.ParseRefundRejected(
+                result,
+                receivedAtUtc);
+
+        var processor =
+            serviceProvider.GetRequiredService<
+                PaymentRefundRejectedInboxProcessor>();
 
         return await processor.ProcessAsync(
                 consumedMessage,

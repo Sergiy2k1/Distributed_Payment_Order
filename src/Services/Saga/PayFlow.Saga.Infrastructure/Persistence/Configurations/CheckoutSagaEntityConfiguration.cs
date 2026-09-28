@@ -35,6 +35,11 @@ public sealed class CheckoutSagaEntityConfiguration
                     "ck_checkout_sagas_reservation_deadline",
                     "reservation_expires_at_utc IS NULL OR "
                     + "(reservation_expires_at_utc > started_at_utc AND reservation_expires_at_utc <= deadline_at_utc)");
+
+                table.HasCheckConstraint(
+                    "ck_checkout_sagas_post_capture_compensation_context",
+                    "(refund_id IS NULL AND post_capture_compensation_mode IS NULL AND restock_operation_id IS NULL) OR "
+                    + "(refund_id IS NOT NULL AND post_capture_compensation_mode IS NOT NULL)");
             });
 
         builder.HasKey(saga => saga.OrderId);
@@ -83,6 +88,16 @@ public sealed class CheckoutSagaEntityConfiguration
 
         builder.Property(saga => saga.PaymentId)
             .HasColumnName("payment_id");
+
+        builder.Property(saga => saga.RefundId)
+            .HasColumnName("refund_id");
+
+        builder.Property(saga => saga.PostCaptureCompensationMode)
+            .HasColumnName("post_capture_compensation_mode")
+            .HasMaxLength(64);
+
+        builder.Property(saga => saga.RestockOperationId)
+            .HasColumnName("restock_operation_id");
 
         builder.Property(saga => saga.RetryCount)
             .HasColumnName("retry_count")

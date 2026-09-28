@@ -228,6 +228,136 @@ public sealed class CheckoutSagaTests
     }
 
     [Fact]
+    public void PostCaptureCompensationFromReservedInventoryPersistsReleaseMode()
+    {
+        var saga = CheckoutSaga.Start(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CreateItems(),
+            "USD",
+            35m,
+            StartedAtUtc,
+            DeadlineAtUtc);
+        var reservationId = Guid.NewGuid();
+        var paymentId = Guid.NewGuid();
+        var refundId = Guid.NewGuid();
+
+        saga.BeginInventoryReservation(
+            reservationId,
+            StartedAtUtc.AddSeconds(1),
+            DeadlineAtUtc);
+        saga.ConfirmInventoryReserved(
+            reservationId,
+            paymentId,
+            StartedAtUtc.AddSeconds(2));
+        saga.ConfirmPaymentCaptured(
+            paymentId,
+            StartedAtUtc.AddSeconds(3));
+
+        saga.BeginPostCaptureCompensation(
+            refundId,
+            StartedAtUtc.AddSeconds(4));
+
+        Assert.Equal(
+            CheckoutSagaStatus.CompensatingPayment,
+            saga.Status);
+        Assert.Equal(refundId, saga.RefundId);
+        Assert.Equal(
+            PostCaptureCompensationMode.ReleaseReservedInventory,
+            saga.PostCaptureCompensationMode);
+        Assert.Null(saga.RestockOperationId);
+    }
+
+    [Fact]
+    public void RefundedConsumedInventoryMovesSagaToRestockCompensation()
+    {
+        var saga = CheckoutSaga.Start(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CreateItems(),
+            "USD",
+            35m,
+            StartedAtUtc,
+            DeadlineAtUtc);
+        var reservationId = Guid.NewGuid();
+        var paymentId = Guid.NewGuid();
+        var refundId = Guid.NewGuid();
+        var restockOperationId = Guid.NewGuid();
+
+        saga.BeginInventoryReservation(
+            reservationId,
+            StartedAtUtc.AddSeconds(1),
+            DeadlineAtUtc);
+        saga.ConfirmInventoryReserved(
+            reservationId,
+            paymentId,
+            StartedAtUtc.AddSeconds(2));
+        saga.ConfirmPaymentCaptured(
+            paymentId,
+            StartedAtUtc.AddSeconds(3));
+        saga.ConfirmInventoryConsumed(
+            reservationId,
+            StartedAtUtc.AddSeconds(4));
+        saga.BeginPostCaptureCompensation(
+            refundId,
+            StartedAtUtc.AddSeconds(5));
+        saga.ConfirmPaymentRefunded(
+            paymentId,
+            refundId,
+            restockOperationId,
+            StartedAtUtc.AddSeconds(6));
+
+        Assert.Equal(
+            CheckoutSagaStatus.CompensatingInventoryRestock,
+            saga.Status);
+        Assert.Equal(
+            PostCaptureCompensationMode.RestockConsumedInventory,
+            saga.PostCaptureCompensationMode);
+        Assert.Equal(
+            restockOperationId,
+            saga.RestockOperationId);
+    }
+
+    [Fact]
+    public void RefundRejectionMovesSagaToManualIntervention()
+    {
+        var saga = CheckoutSaga.Start(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CreateItems(),
+            "USD",
+            35m,
+            StartedAtUtc,
+            DeadlineAtUtc);
+        var reservationId = Guid.NewGuid();
+        var paymentId = Guid.NewGuid();
+        var refundId = Guid.NewGuid();
+
+        saga.BeginInventoryReservation(
+            reservationId,
+            StartedAtUtc.AddSeconds(1),
+            DeadlineAtUtc);
+        saga.ConfirmInventoryReserved(
+            reservationId,
+            paymentId,
+            StartedAtUtc.AddSeconds(2));
+        saga.ConfirmPaymentCaptured(
+            paymentId,
+            StartedAtUtc.AddSeconds(3));
+        saga.BeginPostCaptureCompensation(
+            refundId,
+            StartedAtUtc.AddSeconds(4));
+        saga.RejectPaymentRefund(
+            paymentId,
+            refundId,
+            StartedAtUtc.AddSeconds(5));
+
+        Assert.Equal(
+            CheckoutSagaStatus.ManualInterventionRequired,
+            saga.Status);
+    }
+
+    [Fact]
     public void RejectPaymentCaptureMovesSagaToCompensatingInventory()
     {
         var saga = CheckoutSaga.Start(

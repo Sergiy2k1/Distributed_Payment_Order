@@ -14,6 +14,10 @@ public static class PaymentEventKafkaMessageParser
         "PaymentCaptured.v1";
     public const string PaymentFailedMessageType =
         "PaymentFailed.v1";
+    public const string PaymentRefundedMessageType =
+        "PaymentRefunded.v1";
+    public const string PaymentRefundRejectedMessageType =
+        "PaymentRefundRejected.v1";
     public const int SchemaVersion = 1;
     public const string Producer = "Payment";
 
@@ -85,6 +89,69 @@ public static class PaymentEventKafkaMessageParser
             new PaymentFailedMessage(
                 parsed.Envelope,
                 payload),
+            parsed.SourceTopic,
+            parsed.SourcePartition,
+            parsed.SourceOffset,
+            receivedAtUtc);
+    }
+
+    public static ConsumedPaymentRefundedMessage ParseRefunded(
+        ConsumeResult<string, string> consumeResult,
+        DateTimeOffset receivedAtUtc)
+    {
+        var parsed = ParseEnvelope(
+            consumeResult,
+            receivedAtUtc,
+            PaymentRefundedMessageType);
+
+        var payload = Deserialize<PaymentRefundedV1>(
+            consumeResult.Message.Value,
+            PaymentRefundedMessageType);
+
+        EnsureOrderId(payload.OrderId, parsed.Envelope.AggregateId);
+
+        if (payload.PaymentId == Guid.Empty
+            || payload.RefundId == Guid.Empty
+            || payload.Amount <= 0
+            || string.IsNullOrWhiteSpace(payload.Currency))
+        {
+            throw new InvalidDataException(
+                "PaymentRefunded payload is invalid.");
+        }
+
+        return new ConsumedPaymentRefundedMessage(
+            new PaymentRefundedMessage(parsed.Envelope, payload),
+            parsed.SourceTopic,
+            parsed.SourcePartition,
+            parsed.SourceOffset,
+            receivedAtUtc);
+    }
+
+    public static ConsumedPaymentRefundRejectedMessage ParseRefundRejected(
+        ConsumeResult<string, string> consumeResult,
+        DateTimeOffset receivedAtUtc)
+    {
+        var parsed = ParseEnvelope(
+            consumeResult,
+            receivedAtUtc,
+            PaymentRefundRejectedMessageType);
+
+        var payload = Deserialize<PaymentRefundRejectedV1>(
+            consumeResult.Message.Value,
+            PaymentRefundRejectedMessageType);
+
+        EnsureOrderId(payload.OrderId, parsed.Envelope.AggregateId);
+
+        if (payload.PaymentId == Guid.Empty
+            || payload.RefundId == Guid.Empty
+            || string.IsNullOrWhiteSpace(payload.ReasonCode))
+        {
+            throw new InvalidDataException(
+                "PaymentRefundRejected payload is invalid.");
+        }
+
+        return new ConsumedPaymentRefundRejectedMessage(
+            new PaymentRefundRejectedMessage(parsed.Envelope, payload),
             parsed.SourceTopic,
             parsed.SourcePartition,
             parsed.SourceOffset,

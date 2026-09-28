@@ -143,11 +143,23 @@ builder.Services.AddScoped<
     IInventoryReleasedMessageHandler,
     InventoryReleasedMessageHandler>();
 builder.Services.AddScoped<
+    IInventoryRestockedMessageHandler,
+    InventoryRestockedMessageHandler>();
+builder.Services.AddScoped<
     IPaymentCapturedMessageHandler,
     PaymentCapturedMessageHandler>();
 builder.Services.AddScoped<
     IPaymentFailedMessageHandler,
     PaymentFailedMessageHandler>();
+builder.Services.AddScoped<
+    IPaymentRefundedMessageHandler,
+    PaymentRefundedMessageHandler>();
+builder.Services.AddScoped<
+    IPaymentRefundRejectedMessageHandler,
+    PaymentRefundRejectedMessageHandler>();
+builder.Services.AddScoped<
+    IPostCaptureCompensationStarter,
+    PostCaptureCompensationStarter>();
 builder.Services.AddScoped<OrderCreatedInboxProcessor>();
 builder.Services.AddScoped<OrderProcessingStartedInboxProcessor>();
 builder.Services.AddScoped<OrderConfirmedInboxProcessor>();
@@ -156,8 +168,11 @@ builder.Services.AddScoped<InventoryReservedInboxProcessor>();
 builder.Services.AddScoped<InventoryReservationRejectedInboxProcessor>();
 builder.Services.AddScoped<InventoryConsumedInboxProcessor>();
 builder.Services.AddScoped<InventoryReleasedInboxProcessor>();
+builder.Services.AddScoped<InventoryRestockedInboxProcessor>();
 builder.Services.AddScoped<PaymentCapturedInboxProcessor>();
 builder.Services.AddScoped<PaymentFailedInboxProcessor>();
+builder.Services.AddScoped<PaymentRefundedInboxProcessor>();
+builder.Services.AddScoped<PaymentRefundRejectedInboxProcessor>();
 builder.Services.AddScoped<OutboxPublisher>();
 
 builder.Services.AddSingleton(outboxPublisherOptions);
