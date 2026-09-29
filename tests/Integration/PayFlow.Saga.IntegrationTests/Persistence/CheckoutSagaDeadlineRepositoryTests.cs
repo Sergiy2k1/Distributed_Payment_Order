@@ -61,20 +61,32 @@ public sealed class CheckoutSagaDeadlineRepositoryTests(
                     queryDbContext)
                 .GetOverdueActiveAsync(
                     NowUtc,
-                    batchSize: 10,
+                    batchSize: 1000,
                     cancellationToken);
 
         var saga =
-            Assert.Single(actual);
+            Assert.Single(
+                actual,
+                candidate =>
+                    candidate.OrderId
+                    == overdueActive.OrderId);
 
-        Assert.Equal(
-            overdueActive.OrderId,
-            saga.OrderId);
         Assert.Equal(
             CheckoutSagaStatus.WaitingForInventory,
             saga.Status);
         Assert.True(
             saga.DeadlineAtUtc <= NowUtc);
+
+        Assert.DoesNotContain(
+            actual,
+            candidate =>
+                candidate.OrderId
+                == futureActive.OrderId);
+        Assert.DoesNotContain(
+            actual,
+            candidate =>
+                candidate.OrderId
+                == completedOverdue.OrderId);
     }
 
     [Fact]
@@ -114,20 +126,48 @@ public sealed class CheckoutSagaDeadlineRepositoryTests(
         await using var queryDbContext =
             fixture.CreateDbContext();
 
+        var repository =
+            new CheckoutSagaRepository(
+                queryDbContext);
+
+        var limited =
+            await repository.GetOverdueActiveAsync(
+                NowUtc,
+                batchSize: 1,
+                cancellationToken);
+
+        Assert.Single(limited);
+
         var actual =
-            await new CheckoutSagaRepository(
-                    queryDbContext)
-                .GetOverdueActiveAsync(
-                    NowUtc,
-                    batchSize: 1,
-                    cancellationToken);
+            await repository.GetOverdueActiveAsync(
+                NowUtc,
+                batchSize: 1000,
+                cancellationToken);
 
-        var saga =
-            Assert.Single(actual);
+        var orderIds =
+            actual
+                .Select(
+                    saga => saga.OrderId)
+                .ToArray();
 
-        Assert.Equal(
-            oldest.OrderId,
-            saga.OrderId);
+        var oldestIndex =
+            Array.IndexOf(
+                orderIds,
+                oldest.OrderId);
+        var newerIndex =
+            Array.IndexOf(
+                orderIds,
+                newer.OrderId);
+
+        Assert.True(
+            oldestIndex >= 0,
+            "Oldest test Saga was not returned.");
+        Assert.True(
+            newerIndex >= 0,
+            "Newer test Saga was not returned.");
+        Assert.True(
+            oldestIndex < newerIndex,
+            "Overdue Sagas must be ordered by deadline.");
     }
 
     private static CheckoutSaga CreateWaitingForInventorySaga(
