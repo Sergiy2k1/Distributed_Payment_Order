@@ -54,6 +54,22 @@ var outboxPublisherWorkerOptions =
             "PollInterval",
             TimeSpan.FromSeconds(1)));
 
+var sagaRecoverySection =
+    builder.Configuration.GetSection(
+        "SagaRecovery");
+
+var sagaRecoveryWorkerOptions =
+    new SagaRecoveryWorkerOptions(
+        sagaRecoverySection.GetValue(
+            "Enabled",
+            true),
+        sagaRecoverySection.GetValue(
+            "PollInterval",
+            TimeSpan.FromSeconds(10)),
+        sagaRecoverySection.GetValue(
+            "BatchSize",
+            50));
+
 var kafkaSection =
     builder.Configuration.GetSection("Kafka");
 
@@ -180,6 +196,7 @@ builder.Services.AddScoped<OutboxPublisher>();
 
 builder.Services.AddSingleton(outboxPublisherOptions);
 builder.Services.AddSingleton(outboxPublisherWorkerOptions);
+builder.Services.AddSingleton(sagaRecoveryWorkerOptions);
 builder.Services.AddSingleton(orderCreatedConsumerOptions);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton(kafkaProducerOptions);
@@ -199,6 +216,8 @@ builder.Services.AddSingleton<
 
 builder.Services.AddHostedService<
     OutboxPublisherBackgroundService>();
+builder.Services.AddHostedService<
+    SagaRecoveryBackgroundService>();
 builder.Services.AddHostedService<
     OrderCreatedConsumerBackgroundService>();
 
