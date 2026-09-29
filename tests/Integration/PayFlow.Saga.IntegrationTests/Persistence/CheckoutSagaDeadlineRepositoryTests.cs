@@ -108,14 +108,14 @@ public sealed class CheckoutSagaDeadlineRepositoryTests(
         await using (var dbContext =
             fixture.CreateDbContext())
         {
-            var repository =
+            var seedRepository =
                 new CheckoutSagaRepository(
                     dbContext);
 
-            await repository.AddAsync(
+            await seedRepository.AddAsync(
                 newer,
                 cancellationToken);
-            await repository.AddAsync(
+            await seedRepository.AddAsync(
                 oldest,
                 cancellationToken);
 
