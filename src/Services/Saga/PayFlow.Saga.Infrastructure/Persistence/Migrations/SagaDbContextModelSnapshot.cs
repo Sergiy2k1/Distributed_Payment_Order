@@ -209,6 +209,12 @@ partial class SagaDbContextModelSnapshot : ModelSnapshot
 
                 entity.HasKey("OrderId");
 
+                entity.HasIndex("DeadlineAtUtc")
+                    .HasDatabaseName(
+                        "IX_checkout_sagas_active_deadline_at_utc")
+                    .HasFilter(
+                        "status NOT IN ('Completed', 'CompletedWithBusinessFailure', 'ManualInterventionRequired')");
+
                 entity.HasIndex(
                         "Status",
                         "NextAttemptAtUtc")

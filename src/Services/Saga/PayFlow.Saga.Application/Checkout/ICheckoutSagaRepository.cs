@@ -12,6 +12,11 @@ public interface ICheckoutSagaRepository
         Guid orderId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<CheckoutSaga>> GetOverdueActiveAsync(
+        DateTimeOffset nowUtc,
+        int batchSize,
+        CancellationToken cancellationToken = default);
+
     Task ApplyAsync(
         CheckoutSaga saga,
         CancellationToken cancellationToken = default);

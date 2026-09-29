@@ -8,6 +8,13 @@ namespace PayFlow.Saga.Infrastructure.Persistence.Repositories;
 public sealed class CheckoutSagaRepository
     : ICheckoutSagaRepository
 {
+    private static readonly string[] TerminalStatuses =
+    [
+        CheckoutSagaStatus.Completed.ToString(),
+        CheckoutSagaStatus.CompletedWithBusinessFailure.ToString(),
+        CheckoutSagaStatus.ManualInterventionRequired.ToString()
+    ];
+
     private readonly SagaDbContext _dbContext;
 
     public CheckoutSagaRepository(
@@ -50,6 +57,49 @@ public sealed class CheckoutSagaRepository
         return entity is null
             ? null
             : CheckoutSagaEntityMapper.ToDomain(entity);
+    }
+
+    public async Task<IReadOnlyList<CheckoutSaga>> GetOverdueActiveAsync(
+        DateTimeOffset nowUtc,
+        int batchSize,
+        CancellationToken cancellationToken = default)
+    {
+        if (nowUtc.Offset != TimeSpan.Zero)
+        {
+            throw new ArgumentException(
+                "Timestamp must use UTC offset.",
+                nameof(nowUtc));
+        }
+
+        if (batchSize <= 0 || batchSize > 1000)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(batchSize),
+                batchSize,
+                "Batch size must be between 1 and 1000.");
+        }
+
+        var entities =
+            await _dbContext.CheckoutSagas
+                .AsNoTracking()
+                .Include(saga => saga.Items)
+                .Where(
+                    saga =>
+                        saga.DeadlineAtUtc <= nowUtc
+                        && !TerminalStatuses.Contains(
+                            saga.Status))
+                .OrderBy(
+                    saga => saga.DeadlineAtUtc)
+                .ThenBy(
+                    saga => saga.OrderId)
+                .Take(batchSize)
+                .ToListAsync(cancellationToken)
+                .ConfigureAwait(false);
+
+        return entities
+            .Select(
+                CheckoutSagaEntityMapper.ToDomain)
+            .ToArray();
     }
 
     public Task ApplyAsync(

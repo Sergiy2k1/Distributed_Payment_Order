@@ -127,5 +127,12 @@ public sealed class CheckoutSagaEntityConfiguration
                 })
             .HasDatabaseName(
                 "IX_checkout_sagas_status_next_attempt_at_utc");
+
+        builder.HasIndex(
+                saga => saga.DeadlineAtUtc)
+            .HasDatabaseName(
+                "IX_checkout_sagas_active_deadline_at_utc")
+            .HasFilter(
+                "status NOT IN ('Completed', 'CompletedWithBusinessFailure', 'ManualInterventionRequired')");
     }
 }
