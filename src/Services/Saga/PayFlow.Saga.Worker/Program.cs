@@ -160,6 +160,9 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IPostCaptureCompensationStarter,
     PostCaptureCompensationStarter>();
+builder.Services.AddScoped<
+    ICheckoutSagaTimeoutProcessor,
+    CheckoutSagaTimeoutProcessor>();
 builder.Services.AddScoped<OrderCreatedInboxProcessor>();
 builder.Services.AddScoped<OrderProcessingStartedInboxProcessor>();
 builder.Services.AddScoped<OrderConfirmedInboxProcessor>();
