@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PayFlow.Saga.Application.Checkout;
 using PayFlow.Saga.Domain.Checkout;
 using PayFlow.Saga.Infrastructure.Messaging.Outbox;
+using PayFlow.Saga.Infrastructure.Persistence;
 using PayFlow.Saga.Infrastructure.Persistence.Repositories;
 using PayFlow.Saga.IntegrationTests.Infrastructure;
 
