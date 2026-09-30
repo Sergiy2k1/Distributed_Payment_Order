@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="src/Services/MockPaymentProvider/PayFlow.MockPaymentProvider/PayFlow.MockPaymentProvider.csproj" />
   <Project Path="src/Services/Payment/PayFlow.Payment.Application/PayFlow.Payment.Application.csproj" />
   <Project Path="src/Services/Payment/PayFlow.Payment.Domain/PayFlow.Payment.Domain.csproj" />
   <Project Path="src/Services/Payment/PayFlow.Payment.Infrastructure/PayFlow.Payment.Infrastructure.csproj" />
@@ -20,6 +21,7 @@
   <Project Path="tests/Integration/PayFlow.Payment.IntegrationTests/PayFlow.Payment.IntegrationTests.csproj" />
   <Project Path="tests/Integration/PayFlow.Saga.IntegrationTests/PayFlow.Saga.IntegrationTests.csproj" />
   <Project Path="tests/Unit/PayFlow.Inventory.UnitTests/PayFlow.Inventory.UnitTests.csproj" />
+  <Project Path="tests/Unit/PayFlow.MockPaymentProvider.UnitTests/PayFlow.MockPaymentProvider.UnitTests.csproj" />
   <Project Path="tests/Unit/PayFlow.Order.UnitTests/PayFlow.Order.UnitTests.csproj" />
   <Project Path="tests/Unit/PayFlow.Payment.UnitTests/PayFlow.Payment.UnitTests.csproj" />
   <Project Path="tests/Unit/PayFlow.Saga.UnitTests/PayFlow.Saga.UnitTests.csproj" />
