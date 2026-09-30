@@ -1,4 +1,5 @@
 using PayFlow.MockPaymentProvider.Capture;
+using PayFlow.MockPaymentProvider.Webhooks;
 
 namespace PayFlow.MockPaymentProvider.Refund;
 
@@ -8,6 +9,7 @@ public static class RefundPaymentEndpoints
         HttpRequest httpRequest,
         RefundPaymentRequest request,
         MockRefundProviderState state,
+        MockWebhookDispatcher webhookDispatcher,
         MockPaymentProviderOptions options,
         CancellationToken cancellationToken)
     {
@@ -29,6 +31,12 @@ public static class RefundPaymentEndpoints
                 state.Refund(
                     values[0]!,
                     request);
+
+            await webhookDispatcher.ScheduleRefundAsync(
+                    request,
+                    decision,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
             switch (decision.Outcome)
             {

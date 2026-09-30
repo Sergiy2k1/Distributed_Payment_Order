@@ -1,3 +1,5 @@
+using PayFlow.MockPaymentProvider.Webhooks;
+
 namespace PayFlow.MockPaymentProvider.Capture;
 
 public static class CapturePaymentEndpoints
@@ -6,6 +8,7 @@ public static class CapturePaymentEndpoints
         HttpRequest httpRequest,
         CapturePaymentRequest request,
         MockPaymentProviderState state,
+        MockWebhookDispatcher webhookDispatcher,
         MockPaymentProviderOptions options,
         CancellationToken cancellationToken)
     {
@@ -27,6 +30,12 @@ public static class CapturePaymentEndpoints
                 state.Capture(
                     values[0]!,
                     request);
+
+            await webhookDispatcher.ScheduleCaptureAsync(
+                    request,
+                    decision,
+                    cancellationToken)
+                .ConfigureAwait(false);
 
             switch (decision.Outcome)
             {
