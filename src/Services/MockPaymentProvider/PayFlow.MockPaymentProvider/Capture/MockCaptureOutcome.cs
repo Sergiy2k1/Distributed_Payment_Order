@@ -1,10 +1,10 @@
 namespace PayFlow.MockPaymentProvider.Capture;
 
-public enum MockPaymentScenario
+public enum MockCaptureOutcome
 {
-    Success = 0,
-    Decline = 1,
+    Succeeded = 0,
+    Declined = 1,
     TimeoutBeforeProcessing = 2,
     TimeoutAfterProcessing = 3,
-    ServerErrorThenSuccess = 4
+    ServerError = 4
 }

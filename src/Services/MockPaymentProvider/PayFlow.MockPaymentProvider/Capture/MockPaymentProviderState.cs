@@ -10,7 +10,7 @@ public sealed class MockPaymentProviderState
 
     private readonly ConcurrentDictionary<
         string,
-        StoredCaptureDecision> _captureDecisions =
+        CaptureOperationState> _captureOperations =
         new(StringComparer.Ordinal);
 
     public void ConfigureScenario(
@@ -56,71 +56,164 @@ public sealed class MockPaymentProviderState
             CaptureRequestFingerprint.Create(
                 request);
 
-        if (_captureDecisions.TryGetValue(
+        var operation =
+            _captureOperations.GetOrAdd(
                 idempotencyKey,
-                out var existing))
+                _ =>
+                    new CaptureOperationState(
+                        fingerprint,
+                        _scenarios.GetValueOrDefault(
+                            request.PaymentId,
+                            MockPaymentScenario.Success)));
+
+        lock (operation.SyncRoot)
         {
-            if (existing.Fingerprint != fingerprint)
+            if (operation.Fingerprint
+                != fingerprint)
             {
                 throw new IdempotencyKeyConflictException(
                     idempotencyKey);
             }
 
-            return existing.Decision with
+            if (operation.FinalDecision is not null)
             {
-                IsIdempotentReplay = true
-            };
-        }
+                return operation.FinalDecision with
+                {
+                    AttemptNumber =
+                        operation.AttemptCount + 1,
+                    IsIdempotentReplay = true
+                };
+            }
 
-        var scenario =
-            _scenarios.GetValueOrDefault(
-                request.PaymentId,
-                MockPaymentScenario.Success);
+            operation.AttemptCount++;
 
-        var decision =
-            scenario switch
+            return operation.Scenario switch
             {
                 MockPaymentScenario.Success =>
-                    new MockCaptureDecision(
-                        scenario,
-                        CreateProviderReference(
-                            request.PaymentId),
-                        false),
+                    CompleteSuccess(
+                        operation,
+                        request.PaymentId),
 
                 MockPaymentScenario.Decline =>
-                    new MockCaptureDecision(
-                        scenario,
-                        null,
-                        false),
+                    CompleteDecline(
+                        operation),
+
+                MockPaymentScenario.TimeoutBeforeProcessing =>
+                    HandleTimeoutBeforeProcessing(
+                        operation,
+                        request.PaymentId),
+
+                MockPaymentScenario.TimeoutAfterProcessing =>
+                    HandleTimeoutAfterProcessing(
+                        operation,
+                        request.PaymentId),
+
+                MockPaymentScenario.ServerErrorThenSuccess =>
+                    HandleServerErrorThenSuccess(
+                        operation,
+                        request.PaymentId),
 
                 _ => throw new InvalidOperationException(
-                    $"Unsupported mock payment scenario '{scenario}'.")
+                    $"Unsupported mock payment scenario '{operation.Scenario}'.")
             };
+        }
+    }
 
-        var stored =
-            new StoredCaptureDecision(
-                fingerprint,
-                decision);
+    private static MockCaptureDecision CompleteSuccess(
+        CaptureOperationState operation,
+        Guid paymentId)
+    {
+        var decision =
+            new MockCaptureDecision(
+                operation.Scenario,
+                MockCaptureOutcome.Succeeded,
+                CreateProviderReference(
+                    paymentId),
+                operation.AttemptCount,
+                false);
 
-        var actual =
-            _captureDecisions.GetOrAdd(
-                idempotencyKey,
-                stored);
+        operation.FinalDecision =
+            decision;
 
-        if (actual.Fingerprint != fingerprint)
+        return decision;
+    }
+
+    private static MockCaptureDecision CompleteDecline(
+        CaptureOperationState operation)
+    {
+        var decision =
+            new MockCaptureDecision(
+                operation.Scenario,
+                MockCaptureOutcome.Declined,
+                null,
+                operation.AttemptCount,
+                false);
+
+        operation.FinalDecision =
+            decision;
+
+        return decision;
+    }
+
+    private static MockCaptureDecision HandleTimeoutBeforeProcessing(
+        CaptureOperationState operation,
+        Guid paymentId)
+    {
+        if (operation.AttemptCount == 1)
         {
-            throw new IdempotencyKeyConflictException(
-                idempotencyKey);
+            return new MockCaptureDecision(
+                operation.Scenario,
+                MockCaptureOutcome.TimeoutBeforeProcessing,
+                null,
+                operation.AttemptCount,
+                false);
         }
 
-        return ReferenceEquals(
-                actual,
-                stored)
-            ? decision
-            : actual.Decision with
-            {
-                IsIdempotentReplay = true
-            };
+        return CompleteSuccess(
+            operation,
+            paymentId);
+    }
+
+    private static MockCaptureDecision HandleTimeoutAfterProcessing(
+        CaptureOperationState operation,
+        Guid paymentId)
+    {
+        var finalDecision =
+            new MockCaptureDecision(
+                operation.Scenario,
+                MockCaptureOutcome.Succeeded,
+                CreateProviderReference(
+                    paymentId),
+                operation.AttemptCount,
+                false);
+
+        operation.FinalDecision =
+            finalDecision;
+
+        return finalDecision with
+        {
+            Outcome =
+                MockCaptureOutcome.TimeoutAfterProcessing
+        };
+    }
+
+    private static MockCaptureDecision HandleServerErrorThenSuccess(
+        CaptureOperationState operation,
+        Guid paymentId)
+    {
+        if (operation.AttemptCount == 1)
+        {
+            return new MockCaptureDecision(
+                operation.Scenario,
+                MockCaptureOutcome.ServerError,
+                null,
+                operation.AttemptCount,
+                false);
+        }
+
+        return CompleteSuccess(
+            operation,
+            paymentId);
     }
 
     private static void ValidateRequest(
@@ -158,9 +251,27 @@ public sealed class MockPaymentProviderState
         return $"mock-capture-{paymentId:N}";
     }
 
-    private sealed record StoredCaptureDecision(
-        CaptureRequestFingerprint Fingerprint,
-        MockCaptureDecision Decision);
+    private sealed class CaptureOperationState
+    {
+        public CaptureOperationState(
+            CaptureRequestFingerprint fingerprint,
+            MockPaymentScenario scenario)
+        {
+            Fingerprint = fingerprint;
+            Scenario = scenario;
+        }
+
+        public object SyncRoot { get; } =
+            new();
+
+        public CaptureRequestFingerprint Fingerprint { get; }
+
+        public MockPaymentScenario Scenario { get; }
+
+        public int AttemptCount { get; set; }
+
+        public MockCaptureDecision? FinalDecision { get; set; }
+    }
 
     private sealed record CaptureRequestFingerprint(
         Guid PaymentId,

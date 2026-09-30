@@ -2,10 +2,12 @@ namespace PayFlow.MockPaymentProvider.Capture;
 
 public static class CapturePaymentEndpoints
 {
-    public static IResult Capture(
+    public static async Task<IResult> CaptureAsync(
         HttpRequest httpRequest,
         CapturePaymentRequest request,
-        MockPaymentProviderState state)
+        MockPaymentProviderState state,
+        MockPaymentProviderOptions options,
+        CancellationToken cancellationToken)
     {
         if (!httpRequest.Headers.TryGetValue(
                 "Idempotency-Key",
@@ -26,28 +28,52 @@ public static class CapturePaymentEndpoints
                     values[0]!,
                     request);
 
-            return decision.Scenario switch
+            switch (decision.Outcome)
             {
-                MockPaymentScenario.Success =>
-                    Results.Ok(
-                        new CapturePaymentResponse(
-                            decision.ProviderReference
-                            ?? throw new InvalidOperationException(
-                                "Successful capture must contain provider reference."))),
+                case MockCaptureOutcome.Succeeded:
+                    return Success(decision);
 
-                MockPaymentScenario.Decline =>
-                    Results.Problem(
+                case MockCaptureOutcome.Declined:
+                    return Results.Problem(
                         statusCode:
                             StatusCodes.Status402PaymentRequired,
                         title:
-                            "Mock payment was declined."),
+                            "Mock payment was declined.");
 
-                _ => Results.Problem(
-                    statusCode:
-                        StatusCodes.Status500InternalServerError,
-                    title:
-                        "Unsupported mock payment scenario.")
-            };
+                case MockCaptureOutcome.TimeoutBeforeProcessing:
+                    await Task.Delay(
+                            options.TimeoutSimulationDelay,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+
+                    return Results.Problem(
+                        statusCode:
+                            StatusCodes.Status504GatewayTimeout,
+                        title:
+                            "Mock timeout before processing.");
+
+                case MockCaptureOutcome.TimeoutAfterProcessing:
+                    await Task.Delay(
+                            options.TimeoutSimulationDelay,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+
+                    return Success(decision);
+
+                case MockCaptureOutcome.ServerError:
+                    return Results.Problem(
+                        statusCode:
+                            StatusCodes.Status500InternalServerError,
+                        title:
+                            "Mock transient provider failure.");
+
+                default:
+                    return Results.Problem(
+                        statusCode:
+                            StatusCodes.Status500InternalServerError,
+                        title:
+                            "Unsupported mock capture outcome.");
+            }
         }
         catch (IdempotencyKeyConflictException)
         {
@@ -71,9 +97,8 @@ public static class CapturePaymentEndpoints
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        if (!Enum.TryParse<MockPaymentScenario>(
+        if (!MockPaymentScenarioParser.TryParse(
                 request.Scenario,
-                ignoreCase: true,
                 out var scenario))
         {
             return Results.Problem(
@@ -96,5 +121,15 @@ public static class CapturePaymentEndpoints
             paymentId);
 
         return Results.NoContent();
+    }
+
+    private static IResult Success(
+        MockCaptureDecision decision)
+    {
+        return Results.Ok(
+            new CapturePaymentResponse(
+                decision.ProviderReference
+                ?? throw new InvalidOperationException(
+                    "Successful capture must contain provider reference.")));
     }
 }

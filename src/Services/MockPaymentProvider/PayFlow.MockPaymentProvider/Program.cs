@@ -6,6 +6,16 @@ var builder =
 builder.Services.AddSingleton<
     MockPaymentProviderState>();
 
+var providerSection =
+    builder.Configuration.GetSection(
+        "MockPaymentProvider");
+
+builder.Services.AddSingleton(
+    new MockPaymentProviderOptions(
+        providerSection.GetValue(
+            "TimeoutSimulationDelay",
+            TimeSpan.FromSeconds(15))));
+
 var app = builder.Build();
 
 app.MapGet(
@@ -19,7 +29,7 @@ app.MapGet(
 
 app.MapPost(
     "/payments/capture",
-    CapturePaymentEndpoints.Capture);
+    CapturePaymentEndpoints.CaptureAsync);
 
 app.MapPut(
     "/scenarios/payments/{paymentId:guid}",
