@@ -20,6 +20,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="../../../src/Services/MockPaymentProvider/PayFlow.MockPaymentProvider/PayFlow.MockPaymentProvider.csproj" />
+    <ProjectReference Include="../../../src/Services/Payment/PayFlow.Payment.Api/PayFlow.Payment.Api.csproj" />
     <ProjectReference Include="../../../src/Services/Payment/PayFlow.Payment.Application/PayFlow.Payment.Application.csproj" />
     <ProjectReference Include="../../../src/Services/Payment/PayFlow.Payment.Domain/PayFlow.Payment.Domain.csproj" />
     <ProjectReference Include="../../../src/Services/Payment/PayFlow.Payment.Infrastructure/PayFlow.Payment.Infrastructure.csproj" />

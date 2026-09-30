@@ -1,5 +1,6 @@
 <Solution>
   <Project Path="src/Services/MockPaymentProvider/PayFlow.MockPaymentProvider/PayFlow.MockPaymentProvider.csproj" />
+  <Project Path="src/Services/Payment/PayFlow.Payment.Api/PayFlow.Payment.Api.csproj" />
   <Project Path="src/Services/Payment/PayFlow.Payment.Application/PayFlow.Payment.Application.csproj" />
   <Project Path="src/Services/Payment/PayFlow.Payment.Domain/PayFlow.Payment.Domain.csproj" />
   <Project Path="src/Services/Payment/PayFlow.Payment.Infrastructure/PayFlow.Payment.Infrastructure.csproj" />
