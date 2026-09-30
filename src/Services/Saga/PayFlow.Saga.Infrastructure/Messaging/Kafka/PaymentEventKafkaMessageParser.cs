@@ -18,6 +18,8 @@ public static class PaymentEventKafkaMessageParser
         "PaymentRefunded.v1";
     public const string PaymentRefundRejectedMessageType =
         "PaymentRefundRejected.v1";
+    public const string PaymentReconciledMessageType =
+        "PaymentReconciled.v1";
     public const int SchemaVersion = 1;
     public const string Producer = "Payment";
 
@@ -152,6 +154,41 @@ public static class PaymentEventKafkaMessageParser
 
         return new ConsumedPaymentRefundRejectedMessage(
             new PaymentRefundRejectedMessage(parsed.Envelope, payload),
+            parsed.SourceTopic,
+            parsed.SourcePartition,
+            parsed.SourceOffset,
+            receivedAtUtc);
+    }
+
+    public static ConsumedPaymentReconciledMessage ParseReconciled(
+        ConsumeResult<string, string> consumeResult,
+        DateTimeOffset receivedAtUtc)
+    {
+        var parsed = ParseEnvelope(
+            consumeResult,
+            receivedAtUtc,
+            PaymentReconciledMessageType);
+
+        var payload = Deserialize<PaymentReconciledV1>(
+            consumeResult.Message.Value,
+            PaymentReconciledMessageType);
+
+        EnsureOrderId(
+            payload.OrderId,
+            parsed.Envelope.AggregateId);
+
+        if (payload.PaymentId == Guid.Empty
+            || payload.ReconciliationId == Guid.Empty
+            || string.IsNullOrWhiteSpace(payload.PaymentStatus))
+        {
+            throw new InvalidDataException(
+                "PaymentReconciled payload is invalid.");
+        }
+
+        return new ConsumedPaymentReconciledMessage(
+            new PaymentReconciledMessage(
+                parsed.Envelope,
+                payload),
             parsed.SourceTopic,
             parsed.SourcePartition,
             parsed.SourceOffset,

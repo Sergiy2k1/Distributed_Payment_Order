@@ -174,6 +174,9 @@ builder.Services.AddScoped<
     IPaymentRefundRejectedMessageHandler,
     PaymentRefundRejectedMessageHandler>();
 builder.Services.AddScoped<
+    IPaymentReconciledMessageHandler,
+    PaymentReconciledMessageHandler>();
+builder.Services.AddScoped<
     IPostCaptureCompensationStarter,
     PostCaptureCompensationStarter>();
 builder.Services.AddScoped<ICheckoutSagaTimeoutProcessor>(
@@ -203,6 +206,7 @@ builder.Services.AddScoped<PaymentCapturedInboxProcessor>();
 builder.Services.AddScoped<PaymentFailedInboxProcessor>();
 builder.Services.AddScoped<PaymentRefundedInboxProcessor>();
 builder.Services.AddScoped<PaymentRefundRejectedInboxProcessor>();
+builder.Services.AddScoped<PaymentReconciledInboxProcessor>();
 builder.Services.AddScoped<OutboxPublisher>();
 
 builder.Services.AddSingleton(outboxPublisherOptions);

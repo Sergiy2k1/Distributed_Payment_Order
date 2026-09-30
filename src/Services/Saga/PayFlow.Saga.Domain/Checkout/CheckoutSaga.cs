@@ -382,6 +382,47 @@ public sealed class CheckoutSaga
         Version++;
     }
 
+    public void RequirePaymentReconciliationIntervention(
+        string errorCode,
+        string errorMessage,
+        DateTimeOffset occurredAtUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(errorCode);
+        ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
+        EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+
+        if (Status == CheckoutSagaStatus.ManualInterventionRequired)
+        {
+            if (string.Equals(
+                    LastTechnicalErrorCode,
+                    errorCode,
+                    StringComparison.Ordinal))
+            {
+                return;
+            }
+
+            throw new InvalidOperationException(
+                "Manual intervention was already requested for a different technical reason.");
+        }
+
+        if (Status != CheckoutSagaStatus.WaitingForPayment)
+        {
+            throw new InvalidOperationException(
+                $"Payment reconciliation intervention can only be requested from {CheckoutSagaStatus.WaitingForPayment}, not {Status}.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            occurredAtUtc,
+            UpdatedAtUtc);
+
+        Status = CheckoutSagaStatus.ManualInterventionRequired;
+        NextAttemptAtUtc = null;
+        LastTechnicalErrorCode = errorCode;
+        LastTechnicalErrorMessage = errorMessage;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
     public void ConfirmPaymentCaptured(
         Guid paymentId,
         DateTimeOffset occurredAtUtc)
@@ -417,6 +458,7 @@ public sealed class CheckoutSaga
             UpdatedAtUtc);
 
         Status = CheckoutSagaStatus.WaitingForInventoryCommit;
+        ClearTechnicalRetryMetadata();
         UpdatedAtUtc = occurredAtUtc;
         Version++;
     }
@@ -736,6 +778,7 @@ public sealed class CheckoutSaga
             UpdatedAtUtc);
 
         Status = CheckoutSagaStatus.CompensatingInventory;
+        ClearTechnicalRetryMetadata();
         UpdatedAtUtc = occurredAtUtc;
         Version++;
     }
@@ -845,6 +888,13 @@ public sealed class CheckoutSaga
         Status = CheckoutSagaStatus.WaitingForOrderCancellation;
         UpdatedAtUtc = occurredAtUtc;
         Version++;
+    }
+
+    private void ClearTechnicalRetryMetadata()
+    {
+        NextAttemptAtUtc = null;
+        LastTechnicalErrorCode = null;
+        LastTechnicalErrorMessage = null;
     }
 
     private static void ValidatePostCaptureCompensationMetadata(

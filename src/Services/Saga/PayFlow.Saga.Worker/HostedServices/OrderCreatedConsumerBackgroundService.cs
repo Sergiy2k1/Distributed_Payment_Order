@@ -273,6 +273,16 @@ public sealed partial class OrderCreatedConsumerBackgroundService
                         cancellationToken)
                     .ConfigureAwait(false),
 
+            (
+                PaymentEventKafkaMessageParser.Topic,
+                PaymentEventKafkaMessageParser.PaymentReconciledMessageType) =>
+                await ProcessPaymentReconciledAsync(
+                        scope.ServiceProvider,
+                        result,
+                        receivedAtUtc,
+                        cancellationToken)
+                    .ConfigureAwait(false),
+
             _ => throw new InvalidDataException(
                 $"Unsupported Saga event '{messageType}' from topic '{result.Topic}'.")
         };
@@ -558,6 +568,28 @@ public sealed partial class OrderCreatedConsumerBackgroundService
         var processor =
             serviceProvider.GetRequiredService<
                 PaymentRefundRejectedInboxProcessor>();
+
+        return await processor.ProcessAsync(
+                consumedMessage,
+                _timeProvider.GetUtcNow(),
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
+    private async Task<bool> ProcessPaymentReconciledAsync(
+        IServiceProvider serviceProvider,
+        ConsumeResult<string, string> result,
+        DateTimeOffset receivedAtUtc,
+        CancellationToken cancellationToken)
+    {
+        var consumedMessage =
+            PaymentEventKafkaMessageParser.ParseReconciled(
+                result,
+                receivedAtUtc);
+
+        var processor =
+            serviceProvider.GetRequiredService<
+                PaymentReconciledInboxProcessor>();
 
         return await processor.ProcessAsync(
                 consumedMessage,
