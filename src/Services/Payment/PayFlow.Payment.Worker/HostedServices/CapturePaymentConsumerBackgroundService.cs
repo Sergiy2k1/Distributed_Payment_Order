@@ -112,6 +112,26 @@ public sealed partial class CapturePaymentConsumerBackgroundService
                         break;
                     }
 
+                    case ReconcilePaymentKafkaMessageParser.MessageType:
+                    {
+                        var consumedMessage =
+                            ReconcilePaymentKafkaMessageParser.Parse(
+                                result,
+                                receivedAtUtc);
+
+                        var processor =
+                            scope.ServiceProvider
+                                .GetRequiredService<
+                                    ReconcilePaymentInboxProcessor>();
+
+                        await processor.ProcessAsync(
+                            consumedMessage,
+                            _timeProvider.GetUtcNow(),
+                            stoppingToken);
+
+                        break;
+                    }
+
                     default:
                         throw new InvalidDataException(
                             $"Unsupported Payment command '{messageType}'.");

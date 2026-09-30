@@ -6,6 +6,7 @@ using Microsoft.Extensions.Hosting;
 using PayFlow.Payment.Application.Abstractions;
 using PayFlow.Payment.Application.Capture;
 using PayFlow.Payment.Application.Provider;
+using PayFlow.Payment.Application.Reconciliation;
 using PayFlow.Payment.Application.Refund;
 using PayFlow.Payment.Infrastructure.Messaging;
 using PayFlow.Payment.Infrastructure.Messaging.Kafka;
@@ -169,11 +170,16 @@ builder.Services.AddScoped<
     IRefundPaymentMessageHandler,
     RefundPaymentMessageHandler>();
 builder.Services.AddScoped<
+    IReconcilePaymentMessageHandler,
+    ReconcilePaymentMessageHandler>();
+builder.Services.AddScoped<
     InboxMessageRepository>();
 builder.Services.AddScoped<
     CapturePaymentInboxProcessor>();
 builder.Services.AddScoped<
     RefundPaymentInboxProcessor>();
+builder.Services.AddScoped<
+    ReconcilePaymentInboxProcessor>();
 
 builder.Services.AddScoped<
     IOutboxMessageRepository,
