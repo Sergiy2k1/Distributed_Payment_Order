@@ -9,6 +9,7 @@
     <Using Include="Xunit" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="xunit.v3" />
@@ -18,6 +19,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../src/Services/MockPaymentProvider/PayFlow.MockPaymentProvider/PayFlow.MockPaymentProvider.csproj" />
     <ProjectReference Include="../../../src/Services/Payment/PayFlow.Payment.Application/PayFlow.Payment.Application.csproj" />
     <ProjectReference Include="../../../src/Services/Payment/PayFlow.Payment.Domain/PayFlow.Payment.Domain.csproj" />
     <ProjectReference Include="../../../src/Services/Payment/PayFlow.Payment.Infrastructure/PayFlow.Payment.Infrastructure.csproj" />
