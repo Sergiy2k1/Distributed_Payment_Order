@@ -86,6 +86,27 @@ public sealed class ProviderWebhookInboxRepository
             : ProviderWebhookInsertResult.Conflict;
     }
 
+    public Task<Guid?> GetNextUnprocessedEventIdAsync(
+        CancellationToken cancellationToken = default)
+    {
+        return _dbContext.ProviderWebhookInbox
+            .AsNoTracking()
+            .Where(
+                webhook =>
+                    webhook.ProcessedAtUtc == null)
+            .OrderBy(
+                webhook =>
+                    webhook.ReceivedAtUtc)
+            .ThenBy(
+                webhook =>
+                    webhook.EventId)
+            .Select(
+                webhook =>
+                    (Guid?)webhook.EventId)
+            .FirstOrDefaultAsync(
+                cancellationToken);
+    }
+
     public Task<ProviderWebhookInboxEntity?> GetByIdAsync(
         Guid eventId,
         CancellationToken cancellationToken = default)

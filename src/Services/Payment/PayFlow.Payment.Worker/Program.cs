@@ -51,6 +51,19 @@ var providerWorkerOptions =
             "PollInterval",
             TimeSpan.FromSeconds(1)));
 
+var webhookWorkerSection =
+    builder.Configuration.GetSection(
+        "ProviderWebhookWorker");
+
+var webhookWorkerOptions =
+    new ProviderWebhookWorkerOptions(
+        webhookWorkerSection.GetValue(
+            "Enabled",
+            false),
+        webhookWorkerSection.GetValue(
+            "PollInterval",
+            TimeSpan.FromSeconds(1)));
+
 var providerSection =
     builder.Configuration.GetSection(
         "PaymentProvider");
@@ -194,6 +207,7 @@ builder.Services.AddScoped<
 
 builder.Services.AddSingleton(executorOptions);
 builder.Services.AddSingleton(providerWorkerOptions);
+builder.Services.AddSingleton(webhookWorkerOptions);
 builder.Services.AddSingleton(providerOptions);
 builder.Services.AddSingleton(paymentWorkerOptions);
 builder.Services.AddSingleton(outboxPublisherOptions);
@@ -232,6 +246,8 @@ builder.Services.AddHostedService<
     OutboxPublisherBackgroundService>();
 builder.Services.AddHostedService<
     ProviderCaptureBackgroundService>();
+builder.Services.AddHostedService<
+    ProviderWebhookBackgroundService>();
 
 var host = builder.Build();
 
