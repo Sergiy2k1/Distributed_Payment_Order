@@ -140,7 +140,7 @@ public sealed class ProviderWebhookEndpointTests(
                 request,
                 new ProviderWebhookInboxRepository(
                     dbContext),
-                new FakeTimeProvider(
+                new FixedTimeProvider(
                     ReceivedAtUtc),
                 cancellationToken);
 
