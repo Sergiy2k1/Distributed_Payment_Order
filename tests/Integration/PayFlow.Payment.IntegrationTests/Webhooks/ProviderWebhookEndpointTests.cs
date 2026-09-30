@@ -1,5 +1,4 @@
 using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Time.Testing;
 using PayFlow.Payment.Api.Webhooks;
 using PayFlow.Payment.Infrastructure.Messaging.Webhooks;
 using PayFlow.Payment.IntegrationTests.Infrastructure;
@@ -27,7 +26,7 @@ public sealed class ProviderWebhookEndpointTests(
                 providerReference: "provider-capture-001");
 
         var timeProvider =
-            new FakeTimeProvider(
+            new FixedTimeProvider(
                 ReceivedAtUtc);
 
         await using var firstDbContext =
@@ -82,7 +81,7 @@ public sealed class ProviderWebhookEndpointTests(
             };
 
         var timeProvider =
-            new FakeTimeProvider(
+            new FixedTimeProvider(
                 ReceivedAtUtc);
 
         await using (var firstDbContext =
@@ -172,5 +171,29 @@ public sealed class ProviderWebhookEndpointTests(
             providerReference,
             null,
             OccurredAtUtc);
+    }
+
+    private sealed class FixedTimeProvider
+        : TimeProvider
+    {
+        private readonly DateTimeOffset _utcNow;
+
+        public FixedTimeProvider(
+            DateTimeOffset utcNow)
+        {
+            if (utcNow.Offset != TimeSpan.Zero)
+            {
+                throw new ArgumentException(
+                    "Timestamp must use UTC offset.",
+                    nameof(utcNow));
+            }
+
+            _utcNow = utcNow;
+        }
+
+        public override DateTimeOffset GetUtcNow()
+        {
+            return _utcNow;
+        }
     }
 }
