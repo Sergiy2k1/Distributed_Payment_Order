@@ -50,12 +50,12 @@ public sealed class ProviderWebhookPollingRepositoryTests(
         await using var verificationDbContext =
             fixture.CreateDbContext();
 
-        var repository =
+        var verificationRepository =
             new ProviderWebhookInboxRepository(
                 verificationDbContext);
 
         var actual =
-            await repository
+            await verificationRepository
                 .GetNextUnprocessedEventIdAsync(
                     cancellationToken);
 
@@ -63,12 +63,12 @@ public sealed class ProviderWebhookPollingRepositoryTests(
             olderEventId,
             actual);
 
-        await repository.MarkProcessedAsync(
+        await verificationRepository.MarkProcessedAsync(
             olderEventId,
             BaseTimeUtc.AddSeconds(3),
             cancellationToken);
 
-        await repository.MarkProcessedAsync(
+        await verificationRepository.MarkProcessedAsync(
             newerEventId,
             BaseTimeUtc.AddSeconds(4),
             cancellationToken);
