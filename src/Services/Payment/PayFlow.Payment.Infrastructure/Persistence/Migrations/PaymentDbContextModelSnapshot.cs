@@ -381,6 +381,90 @@ partial class PaymentDbContextModelSnapshot : ModelSnapshot
             });
 
         modelBuilder.Entity(
+            "PayFlow.Payment.Infrastructure.Persistence.Entities.ProviderWebhookInboxEntity",
+            entity =>
+            {
+                entity.Property<Guid>("EventId")
+                    .ValueGeneratedNever()
+                    .HasColumnType("uuid")
+                    .HasColumnName("event_id");
+
+                entity.Property<string>("ErrorCode")
+                    .HasMaxLength(128)
+                    .HasColumnType("character varying(128)")
+                    .HasColumnName("error_code");
+
+                entity.Property<string>("EventType")
+                    .IsRequired()
+                    .HasMaxLength(128)
+                    .HasColumnType("character varying(128)")
+                    .HasColumnName("event_type");
+
+                entity.Property<string>("OperationType")
+                    .IsRequired()
+                    .HasMaxLength(32)
+                    .HasColumnType("character varying(32)")
+                    .HasColumnName("operation_type");
+
+                entity.Property<string>("Outcome")
+                    .IsRequired()
+                    .HasMaxLength(64)
+                    .HasColumnType("character varying(64)")
+                    .HasColumnName("outcome");
+
+                entity.Property<DateTimeOffset>("OccurredAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("occurred_at_utc");
+
+                entity.Property<Guid>("PaymentId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("payment_id");
+
+                entity.Property<string>("PayloadHash")
+                    .IsRequired()
+                    .IsFixedLength()
+                    .HasMaxLength(64)
+                    .HasColumnType("character(64)")
+                    .HasColumnName("payload_hash");
+
+                entity.Property<DateTimeOffset?>("ProcessedAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("processed_at_utc");
+
+                entity.Property<string>("ProviderReference")
+                    .HasMaxLength(256)
+                    .HasColumnType("character varying(256)")
+                    .HasColumnName("provider_reference");
+
+                entity.Property<DateTimeOffset>("ReceivedAtUtc")
+                    .HasColumnType("timestamp with time zone")
+                    .HasColumnName("received_at_utc");
+
+                entity.Property<Guid?>("RefundId")
+                    .HasColumnType("uuid")
+                    .HasColumnName("refund_id");
+
+                entity.HasKey("EventId");
+
+                entity.HasIndex("ProcessedAtUtc")
+                    .HasDatabaseName(
+                        "IX_provider_webhook_inbox_unprocessed");
+
+                entity.HasIndex("OperationType", "PaymentId")
+                    .HasDatabaseName(
+                        "IX_provider_webhook_inbox_operation_payment");
+
+                entity.ToTable(
+                    "provider_webhook_inbox",
+                    table =>
+                    {
+                        table.HasCheckConstraint(
+                            "ck_provider_webhook_inbox_payload_hash_length",
+                            "char_length(payload_hash) = 64");
+                    });
+            });
+
+        modelBuilder.Entity(
             "PayFlow.Payment.Infrastructure.Persistence.Entities.ProviderOperationEntity",
             entity =>
             {

@@ -29,6 +29,9 @@ public sealed class PaymentDbContext : DbContext
     public DbSet<OutboxMessageEntity> OutboxMessages =>
         Set<OutboxMessageEntity>();
 
+    public DbSet<ProviderWebhookInboxEntity> ProviderWebhookInbox =>
+        Set<ProviderWebhookInboxEntity>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
