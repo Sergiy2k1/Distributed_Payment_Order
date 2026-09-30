@@ -10,6 +10,12 @@ namespace PayFlow.Payment.Infrastructure.Persistence.Migrations;
 [Migration("20260930190000_AddProviderWebhookInbox")]
 public partial class AddProviderWebhookInbox : Migration
 {
+    private static readonly string[] OperationPaymentIndexColumns =
+    [
+        "operation_type",
+        "payment_id"
+    ];
+
     protected override void Up(
         MigrationBuilder migrationBuilder)
     {
@@ -75,11 +81,7 @@ public partial class AddProviderWebhookInbox : Migration
         migrationBuilder.CreateIndex(
             name: "IX_provider_webhook_inbox_operation_payment",
             table: "provider_webhook_inbox",
-            columns: new[]
-            {
-                "operation_type",
-                "payment_id"
-            });
+            columns: OperationPaymentIndexColumns);
 
         migrationBuilder.CreateIndex(
             name: "IX_provider_webhook_inbox_unprocessed",
