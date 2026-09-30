@@ -50,15 +50,28 @@ public sealed class ProviderWebhookPollingRepositoryTests(
         await using var verificationDbContext =
             fixture.CreateDbContext();
 
+        var repository =
+            new ProviderWebhookInboxRepository(
+                verificationDbContext);
+
         var actual =
-            await new ProviderWebhookInboxRepository(
-                    verificationDbContext)
+            await repository
                 .GetNextUnprocessedEventIdAsync(
                     cancellationToken);
 
         Assert.Equal(
             olderEventId,
             actual);
+
+        await repository.MarkProcessedAsync(
+            olderEventId,
+            BaseTimeUtc.AddSeconds(3),
+            cancellationToken);
+
+        await repository.MarkProcessedAsync(
+            newerEventId,
+            BaseTimeUtc.AddSeconds(4),
+            cancellationToken);
     }
 
     [Fact]
