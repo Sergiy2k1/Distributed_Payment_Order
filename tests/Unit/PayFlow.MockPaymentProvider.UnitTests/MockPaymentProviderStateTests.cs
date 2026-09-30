@@ -62,15 +62,18 @@ public sealed class MockPaymentProviderStateTests
             paymentId,
             MockPaymentScenario.TimeoutBeforeProcessing);
 
+        var request =
+            CreateRequest(paymentId);
+
         var first =
             state.Capture(
                 "capture-key-timeout-before",
-                CreateRequest(paymentId));
+                request);
 
         var second =
             state.Capture(
                 "capture-key-timeout-before",
-                CreateRequest(paymentId));
+                request);
 
         Assert.Equal(
             MockCaptureOutcome.TimeoutBeforeProcessing,
