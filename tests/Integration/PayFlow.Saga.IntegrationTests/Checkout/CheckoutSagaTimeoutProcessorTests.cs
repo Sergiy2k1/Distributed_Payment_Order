@@ -66,15 +66,23 @@ public sealed class CheckoutSagaTimeoutProcessorTests(
                 new CheckoutSagaRepository(
                     processDbContext);
 
+            var outboxWriter =
+                new SagaOutboxWriter(
+                    processDbContext);
+            var unitOfWork =
+                new SagaEfUnitOfWork(
+                    processDbContext);
+
             var processor =
                 new CheckoutSagaTimeoutProcessor(
                     repository,
                     new PostCaptureCompensationStarter(
                         repository,
-                        new SagaOutboxWriter(
-                            processDbContext),
-                        new SagaEfUnitOfWork(
-                            processDbContext)));
+                        outboxWriter,
+                        unitOfWork),
+                    outboxWriter,
+                    unitOfWork,
+                    TimeSpan.FromMinutes(5));
 
             outcomes =
                 await processor.ProcessBatchAsync(
@@ -95,7 +103,7 @@ public sealed class CheckoutSagaTimeoutProcessorTests(
             outcome =>
                 outcome.OrderId == ambiguousPayment.OrderId
                 && outcome.Action
-                == CheckoutSagaTimeoutAction.RequiresReconciliation);
+                == CheckoutSagaTimeoutAction.ReconciliationRequested);
 
         Assert.DoesNotContain(
             outcomes,
@@ -136,6 +144,13 @@ public sealed class CheckoutSagaTimeoutProcessorTests(
             Assert.Equal(
                 CheckoutSagaStatus.WaitingForPayment.ToString(),
                 ambiguous.Status);
+            Assert.Equal(1, ambiguous.RetryCount);
+            Assert.Equal(
+                NowUtc.AddMinutes(5),
+                ambiguous.NextAttemptAtUtc);
+            Assert.Equal(
+                "PAYMENT_OUTCOME_UNKNOWN",
+                ambiguous.LastTechnicalErrorCode);
 
             Assert.Equal(
                 1,
@@ -150,13 +165,15 @@ public sealed class CheckoutSagaTimeoutProcessorTests(
                         cancellationToken));
 
             Assert.Equal(
-                0,
+                1,
                 await verificationDbContext.OutboxMessages
                     .AsNoTracking()
                     .CountAsync(
                         message =>
                             message.AggregateId
-                            == ambiguousPayment.OrderId,
+                            == ambiguousPayment.OrderId
+                            && message.MessageType
+                            == "ReconcilePayment.v1",
                         cancellationToken));
         }
 
@@ -167,15 +184,23 @@ public sealed class CheckoutSagaTimeoutProcessorTests(
                 new CheckoutSagaRepository(
                     replayDbContext);
 
+            var outboxWriter =
+                new SagaOutboxWriter(
+                    replayDbContext);
+            var unitOfWork =
+                new SagaEfUnitOfWork(
+                    replayDbContext);
+
             var processor =
                 new CheckoutSagaTimeoutProcessor(
                     repository,
                     new PostCaptureCompensationStarter(
                         repository,
-                        new SagaOutboxWriter(
-                            replayDbContext),
-                        new SagaEfUnitOfWork(
-                            replayDbContext)));
+                        outboxWriter,
+                        unitOfWork),
+                    outboxWriter,
+                    unitOfWork,
+                    TimeSpan.FromMinutes(5));
 
             var replayOutcomes =
                 await processor.ProcessBatchAsync(
@@ -205,6 +230,18 @@ public sealed class CheckoutSagaTimeoutProcessorTests(
                         == postCapture.OrderId
                         && message.MessageType
                         == "RefundPayment.v1",
+                    cancellationToken));
+
+        Assert.Equal(
+            1,
+            await finalDbContext.OutboxMessages
+                .AsNoTracking()
+                .CountAsync(
+                    message =>
+                        message.AggregateId
+                        == ambiguousPayment.OrderId
+                        && message.MessageType
+                        == "ReconcilePayment.v1",
                     cancellationToken));
     }
 

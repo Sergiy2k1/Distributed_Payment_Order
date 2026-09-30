@@ -194,6 +194,54 @@ public sealed class CheckoutSagaTests
     }
 
     [Fact]
+    public void SchedulePaymentReconciliationPersistsRetryMetadata()
+    {
+        var saga = CheckoutSaga.Start(
+            Guid.NewGuid(),
+            Guid.NewGuid(),
+            CreateItems(),
+            "USD",
+            35m,
+            StartedAtUtc,
+            DeadlineAtUtc);
+        var reservationId = Guid.NewGuid();
+
+        saga.BeginInventoryReservation(
+            reservationId,
+            StartedAtUtc.AddSeconds(1),
+            DeadlineAtUtc);
+        saga.ConfirmInventoryReserved(
+            reservationId,
+            Guid.NewGuid(),
+            StartedAtUtc.AddSeconds(2));
+
+        var occurredAtUtc =
+            DeadlineAtUtc.AddSeconds(1);
+        var nextAttemptAtUtc =
+            occurredAtUtc.AddSeconds(30);
+
+        saga.SchedulePaymentReconciliation(
+            "PAYMENT_OUTCOME_UNKNOWN",
+            "Payment outcome requires reconciliation.",
+            occurredAtUtc,
+            nextAttemptAtUtc);
+
+        Assert.Equal(1, saga.RetryCount);
+        Assert.Equal(
+            nextAttemptAtUtc,
+            saga.NextAttemptAtUtc);
+        Assert.Equal(
+            "PAYMENT_OUTCOME_UNKNOWN",
+            saga.LastTechnicalErrorCode);
+        Assert.Equal(
+            "Payment outcome requires reconciliation.",
+            saga.LastTechnicalErrorMessage);
+        Assert.Equal(
+            CheckoutSagaStatus.WaitingForPayment,
+            saga.Status);
+    }
+
+    [Fact]
     public void ConfirmPaymentCapturedMovesSagaToWaitingForInventoryCommit()
     {
         var saga = CheckoutSaga.Start(

@@ -339,6 +339,49 @@ public sealed class CheckoutSaga
         Version++;
     }
 
+    public void SchedulePaymentReconciliation(
+        string errorCode,
+        string errorMessage,
+        DateTimeOffset occurredAtUtc,
+        DateTimeOffset nextAttemptAtUtc)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(errorCode);
+        ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
+        EnsureUtc(occurredAtUtc, nameof(occurredAtUtc));
+        EnsureUtc(nextAttemptAtUtc, nameof(nextAttemptAtUtc));
+
+        if (Status != CheckoutSagaStatus.WaitingForPayment)
+        {
+            throw new InvalidOperationException(
+                $"Payment reconciliation can only be scheduled from {CheckoutSagaStatus.WaitingForPayment}, not {Status}.");
+        }
+
+        if (PaymentId is null)
+        {
+            throw new InvalidOperationException(
+                "Payment reconciliation requires a persisted PaymentId.");
+        }
+
+        ArgumentOutOfRangeException.ThrowIfLessThan(
+            occurredAtUtc,
+            UpdatedAtUtc);
+
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(
+            nextAttemptAtUtc,
+            occurredAtUtc);
+
+        checked
+        {
+            RetryCount++;
+        }
+
+        NextAttemptAtUtc = nextAttemptAtUtc;
+        LastTechnicalErrorCode = errorCode;
+        LastTechnicalErrorMessage = errorMessage;
+        UpdatedAtUtc = occurredAtUtc;
+        Version++;
+    }
+
     public void ConfirmPaymentCaptured(
         Guid paymentId,
         DateTimeOffset occurredAtUtc)

@@ -86,6 +86,8 @@ public sealed class CheckoutSagaRepository
                 .Where(
                     saga =>
                         saga.DeadlineAtUtc <= nowUtc
+                        && (saga.NextAttemptAtUtc == null
+                            || saga.NextAttemptAtUtc <= nowUtc)
                         && !TerminalStatuses.Contains(
                             saga.Status))
                 .OrderBy(

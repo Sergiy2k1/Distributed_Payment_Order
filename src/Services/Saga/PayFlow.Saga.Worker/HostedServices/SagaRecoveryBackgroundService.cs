@@ -112,6 +112,12 @@ public sealed partial class SagaRecoveryBackgroundService
                     outcome.Action
                     == CheckoutSagaTimeoutAction.RequiresReconciliation);
 
+        var reconciliationRequested =
+            outcomes.Count(
+                outcome =>
+                    outcome.Action
+                    == CheckoutSagaTimeoutAction.ReconciliationRequested);
+
         var recoveryAlreadyInProgress =
             outcomes.Count(
                 outcome =>
@@ -129,6 +135,7 @@ public sealed partial class SagaRecoveryBackgroundService
             outcomes.Count,
             compensationsStarted,
             requiresReconciliation,
+            reconciliationRequested,
             recoveryAlreadyInProgress,
             noAction);
 
@@ -159,12 +166,13 @@ public sealed partial class SagaRecoveryBackgroundService
     [LoggerMessage(
         EventId = 1302,
         Level = LogLevel.Information,
-        Message = "Saga recovery batch processed. Total: {TotalCount}, CompensationStarted: {CompensationStarted}, RequiresReconciliation: {RequiresReconciliation}, RecoveryAlreadyInProgress: {RecoveryAlreadyInProgress}, NoAction: {NoAction}.")]
+        Message = "Saga recovery batch processed. Total: {TotalCount}, CompensationStarted: {CompensationStarted}, RequiresReconciliation: {RequiresReconciliation}, ReconciliationRequested: {ReconciliationRequested}, RecoveryAlreadyInProgress: {RecoveryAlreadyInProgress}, NoAction: {NoAction}.")]
     private static partial void LogBatchProcessed(
         ILogger logger,
         int totalCount,
         int compensationStarted,
         int requiresReconciliation,
+        int reconciliationRequested,
         int recoveryAlreadyInProgress,
         int noAction);
 

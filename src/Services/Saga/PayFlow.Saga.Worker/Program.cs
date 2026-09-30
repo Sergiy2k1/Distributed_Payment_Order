@@ -176,9 +176,20 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<
     IPostCaptureCompensationStarter,
     PostCaptureCompensationStarter>();
-builder.Services.AddScoped<
-    ICheckoutSagaTimeoutProcessor,
-    CheckoutSagaTimeoutProcessor>();
+builder.Services.AddScoped<ICheckoutSagaTimeoutProcessor>(
+    serviceProvider =>
+        new CheckoutSagaTimeoutProcessor(
+            serviceProvider.GetRequiredService<
+                ICheckoutSagaRepository>(),
+            serviceProvider.GetRequiredService<
+                IPostCaptureCompensationStarter>(),
+            serviceProvider.GetRequiredService<
+                ISagaOutboxWriter>(),
+            serviceProvider.GetRequiredService<
+                ISagaUnitOfWork>(),
+            sagaRecoverySection.GetValue(
+                "ReconciliationRetryDelay",
+                TimeSpan.FromSeconds(30))));
 builder.Services.AddScoped<OrderCreatedInboxProcessor>();
 builder.Services.AddScoped<OrderProcessingStartedInboxProcessor>();
 builder.Services.AddScoped<OrderConfirmedInboxProcessor>();
