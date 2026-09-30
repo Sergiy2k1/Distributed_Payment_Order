@@ -11,6 +11,7 @@ using PayFlow.Payment.Application.Refund;
 using PayFlow.Payment.Infrastructure.Messaging;
 using PayFlow.Payment.Infrastructure.Messaging.Kafka;
 using PayFlow.Payment.Infrastructure.Messaging.Outbox;
+using PayFlow.Payment.Infrastructure.Messaging.Webhooks;
 using PayFlow.Payment.Infrastructure.Persistence;
 using PayFlow.Payment.Infrastructure.Persistence.Repositories;
 using PayFlow.Payment.Infrastructure.Provider;
@@ -180,6 +181,10 @@ builder.Services.AddScoped<
     RefundPaymentInboxProcessor>();
 builder.Services.AddScoped<
     ReconcilePaymentInboxProcessor>();
+builder.Services.AddScoped<
+    ProviderWebhookInboxRepository>();
+builder.Services.AddScoped<
+    ProviderWebhookProcessor>();
 
 builder.Services.AddScoped<
     IOutboxMessageRepository,

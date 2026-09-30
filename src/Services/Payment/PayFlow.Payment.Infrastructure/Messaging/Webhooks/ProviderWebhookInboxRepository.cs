@@ -86,6 +86,25 @@ public sealed class ProviderWebhookInboxRepository
             : ProviderWebhookInsertResult.Conflict;
     }
 
+    public Task<ProviderWebhookInboxEntity?> GetByIdAsync(
+        Guid eventId,
+        CancellationToken cancellationToken = default)
+    {
+        if (eventId == Guid.Empty)
+        {
+            throw new ArgumentException(
+                "EventId cannot be empty.",
+                nameof(eventId));
+        }
+
+        return _dbContext.ProviderWebhookInbox
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                webhook =>
+                    webhook.EventId == eventId,
+                cancellationToken);
+    }
+
     public async Task MarkProcessedAsync(
         Guid eventId,
         DateTimeOffset processedAtUtc,
