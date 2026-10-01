@@ -9,6 +9,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../../BuildingBlocks/PayFlow.Observability/PayFlow.Observability.csproj" />
     <ProjectReference Include="../PayFlow.Saga.Infrastructure/PayFlow.Saga.Infrastructure.csproj" />
   </ItemGroup>
 

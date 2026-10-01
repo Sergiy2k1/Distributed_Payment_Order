@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using PayFlow.Observability;
 using PayFlow.Saga.Application.Abstractions;
 using PayFlow.Saga.Application.Checkout;
 using PayFlow.Saga.Application.Inventory;
@@ -17,6 +18,11 @@ using PayFlow.Saga.Infrastructure.Persistence.Repositories;
 using PayFlow.Saga.Worker.HostedServices;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddPayFlowObservability(
+    builder.Configuration,
+    "payflow-saga-worker",
+    includeAspNetCoreInstrumentation: false);
 
 var sagaDatabaseConnectionString =
     builder.Configuration.GetConnectionString("SagaDatabase");
