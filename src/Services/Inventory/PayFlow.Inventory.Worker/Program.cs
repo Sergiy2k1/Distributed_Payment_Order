@@ -11,8 +11,14 @@ using PayFlow.Inventory.Infrastructure.Messaging.Outbox;
 using PayFlow.Inventory.Infrastructure.Persistence;
 using PayFlow.Inventory.Infrastructure.Persistence.Repositories;
 using PayFlow.Inventory.Worker.HostedServices;
+using PayFlow.Observability;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddPayFlowObservability(
+    builder.Configuration,
+    "payflow-inventory-worker",
+    includeAspNetCoreInstrumentation: false);
 
 var connectionString =
     builder.Configuration.GetConnectionString(
