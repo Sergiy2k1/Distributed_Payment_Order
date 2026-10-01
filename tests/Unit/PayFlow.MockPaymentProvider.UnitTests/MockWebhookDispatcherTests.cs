@@ -10,21 +10,13 @@ public sealed class MockWebhookDispatcherTests
     public async Task DuplicateWebhookSchedulesSameEventTwice()
     {
         var state = new MockWebhookScenarioState();
-        var queue = new MockWebhookDeliveryQueue();
+        var channel = new MockWebhookDeliveryChannel();
         var paymentId = Guid.NewGuid();
-        var request = new CapturePaymentRequest(
-            paymentId,
-            Guid.NewGuid(),
-            35m,
-            "USD");
+        var request = new CapturePaymentRequest(paymentId, Guid.NewGuid(), 35m, "USD");
 
-        state.ConfigureCapture(
-            paymentId,
-            MockWebhookScenario.DuplicateWebhook);
+        state.ConfigureCapture(paymentId, MockWebhookScenario.DuplicateWebhook);
 
-        var dispatcher = CreateDispatcher(
-            state,
-            queue);
+        var dispatcher = CreateDispatcher(state, channel);
 
         await dispatcher.ScheduleCaptureAsync(
             request,
@@ -36,44 +28,28 @@ public sealed class MockWebhookDispatcherTests
                 false),
             TestContext.Current.CancellationToken);
 
-        Assert.True(queue.TryRead(out var first));
-        Assert.True(queue.TryRead(out var second));
+        Assert.True(channel.TryRead(out var first));
+        Assert.True(channel.TryRead(out var second));
         Assert.NotNull(first);
         Assert.NotNull(second);
-        Assert.Equal(
-            first.Payload.EventId,
-            second.Payload.EventId);
-        Assert.Equal(
-            TimeSpan.Zero,
-            first.Delay);
-        Assert.Equal(
-            TimeSpan.FromMilliseconds(50),
-            second.Delay);
-        Assert.False(
-            queue.TryRead(out _));
+        Assert.Equal(first.Payload.EventId, second.Payload.EventId);
+        Assert.Equal(TimeSpan.Zero, first.Delay);
+        Assert.Equal(TimeSpan.FromMilliseconds(50), second.Delay);
+        Assert.False(channel.TryRead(out _));
     }
 
     [Fact]
     public async Task DelayedRefundSchedulesSingleDelayedWebhook()
     {
         var state = new MockWebhookScenarioState();
-        var queue = new MockWebhookDeliveryQueue();
+        var channel = new MockWebhookDeliveryChannel();
         var refundId = Guid.NewGuid();
         var paymentId = Guid.NewGuid();
-        var request = new RefundPaymentRequest(
-            paymentId,
-            Guid.NewGuid(),
-            refundId,
-            35m,
-            "USD");
+        var request = new RefundPaymentRequest(paymentId, Guid.NewGuid(), refundId, 35m, "USD");
 
-        state.ConfigureRefund(
-            refundId,
-            MockWebhookScenario.DelayedWebhook);
+        state.ConfigureRefund(refundId, MockWebhookScenario.DelayedWebhook);
 
-        var dispatcher = CreateDispatcher(
-            state,
-            queue);
+        var dispatcher = CreateDispatcher(state, channel);
 
         await dispatcher.ScheduleRefundAsync(
             request,
@@ -85,42 +61,27 @@ public sealed class MockWebhookDispatcherTests
                 false),
             TestContext.Current.CancellationToken);
 
-        Assert.True(queue.TryRead(out var delivery));
+        Assert.True(channel.TryRead(out var delivery));
         Assert.NotNull(delivery);
-        Assert.Equal(
-            "Refund",
-            delivery.Payload.OperationType);
-        Assert.Equal(
-            refundId,
-            delivery.Payload.RefundId);
-        Assert.Equal(
-            TimeSpan.FromSeconds(2),
-            delivery.Delay);
-        Assert.False(
-            queue.TryRead(out _));
+        Assert.Equal("Refund", delivery.Payload.OperationType);
+        Assert.Equal(refundId, delivery.Payload.RefundId);
+        Assert.Equal(TimeSpan.FromSeconds(2), delivery.Delay);
+        Assert.False(channel.TryRead(out _));
     }
 
     [Fact]
     public async Task IdempotentReplayDoesNotScheduleAnotherWebhook()
     {
         var state = new MockWebhookScenarioState();
-        var queue = new MockWebhookDeliveryQueue();
+        var channel = new MockWebhookDeliveryChannel();
         var paymentId = Guid.NewGuid();
 
-        state.ConfigureCapture(
-            paymentId,
-            MockWebhookScenario.DuplicateWebhook);
+        state.ConfigureCapture(paymentId, MockWebhookScenario.DuplicateWebhook);
 
-        var dispatcher = CreateDispatcher(
-            state,
-            queue);
+        var dispatcher = CreateDispatcher(state, channel);
 
         await dispatcher.ScheduleCaptureAsync(
-            new CapturePaymentRequest(
-                paymentId,
-                Guid.NewGuid(),
-                35m,
-                "USD"),
+            new CapturePaymentRequest(paymentId, Guid.NewGuid(), 35m, "USD"),
             new MockCaptureDecision(
                 MockPaymentScenario.Success,
                 MockCaptureOutcome.Succeeded,
@@ -129,41 +90,30 @@ public sealed class MockWebhookDispatcherTests
                 true),
             TestContext.Current.CancellationToken);
 
-        Assert.False(
-            queue.TryRead(out _));
+        Assert.False(channel.TryRead(out _));
     }
 
     [Theory]
-    [InlineData(
-        "delayed_webhook",
-        MockWebhookScenario.DelayedWebhook)]
-    [InlineData(
-        "duplicate_webhook",
-        MockWebhookScenario.DuplicateWebhook)]
+    [InlineData("delayed_webhook", MockWebhookScenario.DelayedWebhook)]
+    [InlineData("duplicate_webhook", MockWebhookScenario.DuplicateWebhook)]
     public void ParserAcceptsDocumentedWebhookScenarioNames(
         string value,
         MockWebhookScenario expected)
     {
-        Assert.True(
-            MockWebhookScenarioParser.TryParse(
-                value,
-                out var actual));
-        Assert.Equal(
-            expected,
-            actual);
+        Assert.True(MockWebhookScenarioParser.TryParse(value, out var actual));
+        Assert.Equal(expected, actual);
     }
 
     private static MockWebhookDispatcher CreateDispatcher(
         MockWebhookScenarioState state,
-        MockWebhookDeliveryQueue queue)
+        MockWebhookDeliveryChannel channel)
     {
         return new MockWebhookDispatcher(
             state,
-            queue,
+            channel,
             new MockPaymentProviderOptions(
                 TimeSpan.FromSeconds(10),
-                new Uri(
-                    "http://localhost:8086/provider/webhooks"),
+                new Uri("http://localhost:8086/provider/webhooks"),
                 TimeSpan.FromSeconds(2),
                 TimeSpan.FromMilliseconds(50)),
             TimeProvider.System);

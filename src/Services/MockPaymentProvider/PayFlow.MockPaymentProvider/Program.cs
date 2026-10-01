@@ -9,7 +9,7 @@ var builder =
 builder.Services.AddSingleton<MockPaymentProviderState>();
 builder.Services.AddSingleton<MockRefundProviderState>();
 builder.Services.AddSingleton<MockWebhookScenarioState>();
-builder.Services.AddSingleton<MockWebhookDeliveryQueue>();
+builder.Services.AddSingleton<MockWebhookDeliveryChannel>();
 builder.Services.AddSingleton<MockWebhookDispatcher>();
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddHttpClient();

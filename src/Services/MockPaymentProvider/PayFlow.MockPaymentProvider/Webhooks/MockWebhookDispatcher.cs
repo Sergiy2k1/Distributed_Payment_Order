@@ -8,18 +8,18 @@ public sealed class MockWebhookDispatcher
     private const string EventType = "PaymentProviderResult.v1";
 
     private readonly MockWebhookScenarioState _scenarioState;
-    private readonly MockWebhookDeliveryQueue _queue;
+    private readonly MockWebhookDeliveryChannel _channel;
     private readonly MockPaymentProviderOptions _options;
     private readonly TimeProvider _timeProvider;
 
     public MockWebhookDispatcher(
         MockWebhookScenarioState scenarioState,
-        MockWebhookDeliveryQueue queue,
+        MockWebhookDeliveryChannel channel,
         MockPaymentProviderOptions options,
         TimeProvider timeProvider)
     {
         _scenarioState = scenarioState;
-        _queue = queue;
+        _channel = channel;
         _options = options;
         _timeProvider = timeProvider;
     }
@@ -114,7 +114,7 @@ public sealed class MockWebhookDispatcher
 
         if (scenario == MockWebhookScenario.DelayedWebhook)
         {
-            await _queue.EnqueueAsync(
+            await _channel.EnqueueAsync(
                 new QueuedProviderWebhook(payload, _options.DelayedWebhookDelay),
                 cancellationToken);
             return;
@@ -122,10 +122,10 @@ public sealed class MockWebhookDispatcher
 
         if (scenario == MockWebhookScenario.DuplicateWebhook)
         {
-            await _queue.EnqueueAsync(
+            await _channel.EnqueueAsync(
                 new QueuedProviderWebhook(payload, TimeSpan.Zero),
                 cancellationToken);
-            await _queue.EnqueueAsync(
+            await _channel.EnqueueAsync(
                 new QueuedProviderWebhook(payload, _options.DuplicateWebhookDelay),
                 cancellationToken);
             return;

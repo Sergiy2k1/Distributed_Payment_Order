@@ -2,7 +2,7 @@ using System.Threading.Channels;
 
 namespace PayFlow.MockPaymentProvider.Webhooks;
 
-public sealed class MockWebhookDeliveryQueue
+public sealed class MockWebhookDeliveryChannel
 {
     private readonly Channel<QueuedProviderWebhook> _channel =
         Channel.CreateUnbounded<QueuedProviderWebhook>(
