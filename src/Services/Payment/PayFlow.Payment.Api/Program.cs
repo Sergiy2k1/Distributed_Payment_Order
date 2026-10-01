@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using PayFlow.Observability;
 using PayFlow.Payment.Api.Webhooks;
 using PayFlow.Payment.Infrastructure.Messaging.Webhooks;
 using PayFlow.Payment.Infrastructure.Persistence;
@@ -12,6 +13,11 @@ public sealed class Program
     {
         var builder =
             WebApplication.CreateBuilder(args);
+
+        builder.Services.AddPayFlowObservability(
+            builder.Configuration,
+            "payflow-payment-api",
+            includeAspNetCoreInstrumentation: true);
 
         var connectionString =
             builder.Configuration.GetConnectionString(
