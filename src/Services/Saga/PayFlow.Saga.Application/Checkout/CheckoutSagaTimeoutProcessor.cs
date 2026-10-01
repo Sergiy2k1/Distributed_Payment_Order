@@ -72,12 +72,21 @@ public sealed class CheckoutSagaTimeoutProcessor
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            outcomes.Add(
+            var statusAtDeadline =
+                saga.Status;
+
+            var outcome =
                 await ProcessSagaAsync(
                         saga,
                         nowUtc,
                         cancellationToken)
-                    .ConfigureAwait(false));
+                    .ConfigureAwait(false);
+
+            SagaBusinessMetrics.RecordTimeout(
+                statusAtDeadline,
+                outcome.Action);
+
+            outcomes.Add(outcome);
         }
 
         return outcomes;
