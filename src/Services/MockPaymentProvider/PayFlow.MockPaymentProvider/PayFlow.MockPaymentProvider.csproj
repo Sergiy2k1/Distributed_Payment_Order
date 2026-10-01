@@ -2,4 +2,8 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../BuildingBlocks/PayFlow.Observability/PayFlow.Observability.csproj" />
+  </ItemGroup>
 </Project>

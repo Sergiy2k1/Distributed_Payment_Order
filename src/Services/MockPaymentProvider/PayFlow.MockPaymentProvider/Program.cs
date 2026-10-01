@@ -2,9 +2,15 @@ using PayFlow.MockPaymentProvider;
 using PayFlow.MockPaymentProvider.Capture;
 using PayFlow.MockPaymentProvider.Refund;
 using PayFlow.MockPaymentProvider.Webhooks;
+using PayFlow.Observability;
 
 var builder =
     WebApplication.CreateBuilder(args);
+
+builder.Services.AddPayFlowObservability(
+    builder.Configuration,
+    "payflow-mock-payment-provider",
+    includeAspNetCoreInstrumentation: true);
 
 builder.Services.AddSingleton<MockPaymentProviderState>();
 builder.Services.AddSingleton<MockRefundProviderState>();
