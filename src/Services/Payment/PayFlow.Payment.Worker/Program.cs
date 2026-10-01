@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using PayFlow.Observability;
 using PayFlow.Payment.Application.Abstractions;
 using PayFlow.Payment.Application.Capture;
 using PayFlow.Payment.Application.Provider;
@@ -18,6 +19,11 @@ using PayFlow.Payment.Infrastructure.Provider;
 using PayFlow.Payment.Worker.HostedServices;
 
 var builder = Host.CreateApplicationBuilder(args);
+
+builder.Services.AddPayFlowObservability(
+    builder.Configuration,
+    "payflow-payment-worker",
+    includeAspNetCoreInstrumentation: false);
 
 var connectionString =
     builder.Configuration.GetConnectionString(
@@ -152,58 +158,27 @@ builder.Services.AddDbContext<PaymentDbContext>(
     options =>
         options.UseNpgsql(connectionString));
 
-builder.Services.AddScoped<
-    IPaymentRepository,
-    PaymentRepository>();
-builder.Services.AddScoped<
-    IProviderOperationRepository,
-    ProviderOperationRepository>();
-builder.Services.AddScoped<
-    IProviderOperationExecutionRepository,
-    ProviderOperationExecutionRepository>();
-builder.Services.AddScoped<
-    ILedgerRepository,
-    LedgerRepository>();
-builder.Services.AddScoped<
-    IPaymentUnitOfWork,
-    PaymentEfUnitOfWork>();
-builder.Services.AddScoped<
-    IPaymentOutboxWriter,
-    PaymentOutboxWriter>();
-builder.Services.AddScoped<
-    IProviderCaptureOutcomeFinalizer,
-    ProviderCaptureOutcomeFinalizer>();
-builder.Services.AddScoped<
-    IProviderRefundOutcomeFinalizer,
-    ProviderRefundOutcomeFinalizer>();
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
+builder.Services.AddScoped<IProviderOperationRepository, ProviderOperationRepository>();
+builder.Services.AddScoped<IProviderOperationExecutionRepository, ProviderOperationExecutionRepository>();
+builder.Services.AddScoped<ILedgerRepository, LedgerRepository>();
+builder.Services.AddScoped<IPaymentUnitOfWork, PaymentEfUnitOfWork>();
+builder.Services.AddScoped<IPaymentOutboxWriter, PaymentOutboxWriter>();
+builder.Services.AddScoped<IProviderCaptureOutcomeFinalizer, ProviderCaptureOutcomeFinalizer>();
+builder.Services.AddScoped<IProviderRefundOutcomeFinalizer, ProviderRefundOutcomeFinalizer>();
 
-builder.Services.AddScoped<
-    ICapturePaymentMessageHandler,
-    CapturePaymentMessageHandler>();
-builder.Services.AddScoped<
-    IRefundPaymentMessageHandler,
-    RefundPaymentMessageHandler>();
-builder.Services.AddScoped<
-    IReconcilePaymentMessageHandler,
-    ReconcilePaymentMessageHandler>();
-builder.Services.AddScoped<
-    InboxMessageRepository>();
-builder.Services.AddScoped<
-    CapturePaymentInboxProcessor>();
-builder.Services.AddScoped<
-    RefundPaymentInboxProcessor>();
-builder.Services.AddScoped<
-    ReconcilePaymentInboxProcessor>();
-builder.Services.AddScoped<
-    ProviderWebhookInboxRepository>();
-builder.Services.AddScoped<
-    ProviderWebhookProcessor>();
+builder.Services.AddScoped<ICapturePaymentMessageHandler, CapturePaymentMessageHandler>();
+builder.Services.AddScoped<IRefundPaymentMessageHandler, RefundPaymentMessageHandler>();
+builder.Services.AddScoped<IReconcilePaymentMessageHandler, ReconcilePaymentMessageHandler>();
+builder.Services.AddScoped<InboxMessageRepository>();
+builder.Services.AddScoped<CapturePaymentInboxProcessor>();
+builder.Services.AddScoped<RefundPaymentInboxProcessor>();
+builder.Services.AddScoped<ReconcilePaymentInboxProcessor>();
+builder.Services.AddScoped<ProviderWebhookInboxRepository>();
+builder.Services.AddScoped<ProviderWebhookProcessor>();
 
-builder.Services.AddScoped<
-    IOutboxMessageRepository,
-    OutboxMessageRepository>();
-builder.Services.AddScoped<
-    OutboxPublisher>();
+builder.Services.AddScoped<IOutboxMessageRepository, OutboxMessageRepository>();
+builder.Services.AddScoped<OutboxPublisher>();
 
 builder.Services.AddSingleton(executorOptions);
 builder.Services.AddSingleton(providerWorkerOptions);
@@ -215,39 +190,26 @@ builder.Services.AddSingleton(outboxWorkerOptions);
 builder.Services.AddSingleton(kafkaProducerOptions);
 builder.Services.AddSingleton(TimeProvider.System);
 
-builder.Services.AddSingleton<
-    IProducer<string, string>>(
+builder.Services.AddSingleton<IProducer<string, string>>(
     _ => new ProducerBuilder<string, string>(
             KafkaProducerConfigFactory.Create(
                 kafkaProducerOptions))
         .Build());
 
-builder.Services.AddSingleton<
-    IKafkaMessageProducer,
-    ConfluentKafkaMessageProducer>();
-builder.Services.AddSingleton<
-    IOutboxTransport,
-    KafkaOutboxTransport>();
+builder.Services.AddSingleton<IKafkaMessageProducer, ConfluentKafkaMessageProducer>();
+builder.Services.AddSingleton<IOutboxTransport, KafkaOutboxTransport>();
 
-builder.Services.AddHttpClient<
-        IPaymentProvider,
-        HttpPaymentProvider>(
-        client =>
-        {
-            client.BaseAddress =
-                providerOptions.BaseAddress;
-            client.Timeout =
-                providerOptions.Timeout;
-        });
+builder.Services.AddHttpClient<IPaymentProvider, HttpPaymentProvider>(
+    client =>
+    {
+        client.BaseAddress = providerOptions.BaseAddress;
+        client.Timeout = providerOptions.Timeout;
+    });
 
-builder.Services.AddHostedService<
-    CapturePaymentConsumerBackgroundService>();
-builder.Services.AddHostedService<
-    OutboxPublisherBackgroundService>();
-builder.Services.AddHostedService<
-    ProviderCaptureBackgroundService>();
-builder.Services.AddHostedService<
-    ProviderWebhookBackgroundService>();
+builder.Services.AddHostedService<CapturePaymentConsumerBackgroundService>();
+builder.Services.AddHostedService<OutboxPublisherBackgroundService>();
+builder.Services.AddHostedService<ProviderCaptureBackgroundService>();
+builder.Services.AddHostedService<ProviderWebhookBackgroundService>();
 
 var host = builder.Build();
 
