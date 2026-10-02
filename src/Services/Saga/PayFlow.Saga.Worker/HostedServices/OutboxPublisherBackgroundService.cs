@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using PayFlow.Observability;
 using PayFlow.Saga.Infrastructure.Messaging.Outbox;
 
 namespace PayFlow.Saga.Worker.HostedServices;
@@ -11,15 +12,18 @@ public sealed partial class OutboxPublisherBackgroundService
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly OutboxPublisherWorkerOptions _options;
     private readonly ILogger<OutboxPublisherBackgroundService> _logger;
+    private readonly TimeProvider _timeProvider;
 
     public OutboxPublisherBackgroundService(
         IServiceScopeFactory scopeFactory,
         OutboxPublisherWorkerOptions options,
-        ILogger<OutboxPublisherBackgroundService> logger)
+        ILogger<OutboxPublisherBackgroundService> logger,
+        TimeProvider timeProvider)
     {
         _scopeFactory = scopeFactory;
         _options = options;
         _logger = logger;
+        _timeProvider = timeProvider;
     }
 
     protected override async Task ExecuteAsync(
@@ -45,10 +49,22 @@ public sealed partial class OutboxPublisherBackgroundService
 
                 var publisher = scope.ServiceProvider
                     .GetRequiredService<OutboxPublisher>();
+                var repository = scope.ServiceProvider
+                    .GetRequiredService<IOutboxMessageRepository>();
 
                 var result = await publisher
                     .PublishBatchAsync(stoppingToken)
                     .ConfigureAwait(false);
+
+                var backlog = await repository
+                    .GetBacklogSnapshotAsync(
+                        _timeProvider.GetUtcNow(),
+                        stoppingToken)
+                    .ConfigureAwait(false);
+
+                OutboxMetrics.Observe(
+                    backlog.PendingMessages,
+                    backlog.OldestPendingAgeSeconds);
 
                 shouldDelay = result.ClaimedCount == 0;
 
