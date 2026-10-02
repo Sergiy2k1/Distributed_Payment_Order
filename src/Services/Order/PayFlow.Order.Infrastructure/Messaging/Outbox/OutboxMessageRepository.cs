@@ -37,6 +37,43 @@ public sealed class OutboxMessageRepository : IOutboxMessageRepository
             .ConfigureAwait(false);
     }
 
+    public async Task<OutboxBacklogSnapshot> GetBacklogSnapshotAsync(
+        DateTimeOffset nowUtc,
+        CancellationToken cancellationToken = default)
+    {
+        EnsureUtc(nowUtc, nameof(nowUtc));
+
+        var snapshot = await _dbContext.OutboxMessages
+            .AsNoTracking()
+            .Where(message =>
+                message.PublishedAtUtc == null)
+            .GroupBy(_ => 1)
+            .Select(group => new
+            {
+                PendingMessages = group.LongCount(),
+                OldestCreatedAtUtc = group.Min(
+                    message => message.CreatedAtUtc)
+            })
+            .SingleOrDefaultAsync(cancellationToken)
+            .ConfigureAwait(false);
+
+        if (snapshot is null)
+        {
+            return new OutboxBacklogSnapshot(0, 0);
+        }
+
+        var oldestPendingAgeSeconds =
+            Math.Max(
+                0L,
+                (long)Math.Floor(
+                    (nowUtc - snapshot.OldestCreatedAtUtc)
+                    .TotalSeconds));
+
+        return new OutboxBacklogSnapshot(
+            snapshot.PendingMessages,
+            oldestPendingAgeSeconds);
+    }
+
     public async Task<IReadOnlyList<OutboxMessageEntity>> ClaimPendingAsync(
         DateTimeOffset nowUtc,
         TimeSpan leaseDuration,

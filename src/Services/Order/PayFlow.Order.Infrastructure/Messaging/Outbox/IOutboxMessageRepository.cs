@@ -11,6 +11,10 @@ public interface IOutboxMessageRepository
         Guid claimToken,
         CancellationToken cancellationToken = default);
 
+    Task<OutboxBacklogSnapshot> GetBacklogSnapshotAsync(
+        DateTimeOffset nowUtc,
+        CancellationToken cancellationToken = default);
+
     Task MarkPublishedAsync(
         Guid outboxMessageId,
         Guid claimToken,

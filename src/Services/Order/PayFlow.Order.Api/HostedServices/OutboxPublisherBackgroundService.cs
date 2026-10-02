@@ -1,4 +1,6 @@
 using Microsoft.Extensions.Logging;
+using PayFlow.Observability;
+using PayFlow.Order.Application.Abstractions;
 using PayFlow.Order.Infrastructure.Messaging.Outbox;
 
 namespace PayFlow.Order.Api.HostedServices;
@@ -50,9 +52,23 @@ public sealed partial class OutboxPublisherBackgroundService
 
                 var publisher = scope.ServiceProvider
                     .GetRequiredService<OutboxPublisher>();
+                var repository = scope.ServiceProvider
+                    .GetRequiredService<IOutboxMessageRepository>();
+                var clock = scope.ServiceProvider
+                    .GetRequiredService<IClock>();
 
                 var result = await publisher
                     .PublishBatchAsync(stoppingToken);
+
+                var backlog = await repository
+                    .GetBacklogSnapshotAsync(
+                        clock.UtcNow,
+                        stoppingToken)
+                    .ConfigureAwait(false);
+
+                OutboxMetrics.Observe(
+                    backlog.PendingMessages,
+                    backlog.OldestPendingAgeSeconds);
 
                 shouldDelay = result.ClaimedCount == 0;
 
