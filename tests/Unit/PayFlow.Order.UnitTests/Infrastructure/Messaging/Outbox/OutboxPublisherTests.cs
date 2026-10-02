@@ -240,6 +240,14 @@ public sealed class OutboxPublisherTests
             return Task.FromResult(claimed);
         }
 
+        public Task<OutboxBacklogSnapshot> GetBacklogSnapshotAsync(
+            DateTimeOffset nowUtc,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(
+                new OutboxBacklogSnapshot(0, 0));
+        }
+
         public Task MarkPublishedAsync(
             Guid outboxMessageId,
             Guid claimToken,
