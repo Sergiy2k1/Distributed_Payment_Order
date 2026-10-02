@@ -4,6 +4,10 @@ namespace PayFlow.Inventory.Infrastructure.Messaging.Outbox;
 
 public interface IOutboxMessageRepository
 {
+    Task<OutboxBacklogSnapshot> GetBacklogSnapshotAsync(
+        DateTimeOffset nowUtc,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<OutboxMessageEntity>> ClaimPendingAsync(
         DateTimeOffset nowUtc,
         TimeSpan leaseDuration,
