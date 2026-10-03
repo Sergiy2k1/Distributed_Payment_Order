@@ -145,11 +145,25 @@ services:
       - ./observability/otel-collector.yml:/etc/otelcol-contrib/config.yaml:ro
     restart: unless-stopped
 
+  alertmanager:
+    image: prom/alertmanager:v0.33.1
+    container_name: payflow-alertmanager
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --storage.path=/alertmanager
+    ports:
+      - "${ALERTMANAGER_PORT:-9093}:9093"
+    volumes:
+      - ./observability/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager-data:/alertmanager
+    restart: unless-stopped
+
   prometheus:
     image: prom/prometheus:v3.15.0
     container_name: payflow-prometheus
     depends_on:
       - otel-collector
+      - alertmanager
     ports:
       - "${PROMETHEUS_PORT:-9090}:9090"
     volumes:
@@ -185,3 +199,4 @@ volumes:
   kafka-data:
   prometheus-data:
   grafana-data:
+  alertmanager-data:
