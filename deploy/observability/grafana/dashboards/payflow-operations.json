@@ -294,6 +294,100 @@
       ],
       "title": "Payment reconciliations in range",
       "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Committed Inbox processing attempts by PayFlow service and outcome. Duplicate spikes can indicate Kafka redelivery or consumer restart recovery.",
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 0,
+        "y": 22
+      },
+      "id": 7,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (service_name, outcome) (rate({__name__=~\"payflow_inbox_processing(_messages)?(_total)?\"}[$__rate_interval]))",
+          "legendFormat": "{{service_name}} / {{outcome}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Inbox processing rate by outcome",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "description": "Duplicate Inbox deliveries over time, grouped by service and message type. This surfaces redelivery pressure while preserving idempotent processing.",
+      "fieldConfig": {
+        "defaults": {
+          "min": 0,
+          "unit": "ops"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 22
+      },
+      "id": 8,
+      "options": {
+        "legend": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "hideZeros": false,
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "targets": [
+        {
+          "editorMode": "code",
+          "expr": "sum by (service_name, message_type) (rate({__name__=~\"payflow_inbox_processing(_messages)?(_total)?\", outcome=\"duplicate\"}[$__rate_interval]))",
+          "legendFormat": "{{service_name}} / {{message_type}}",
+          "range": true,
+          "refId": "A"
+        }
+      ],
+      "title": "Duplicate Inbox messages by type",
+      "type": "timeseries"
     }
   ],
   "refresh": "10s",
@@ -301,6 +395,7 @@
   "tags": [
     "payflow",
     "outbox",
+    "inbox",
     "saga",
     "observability"
   ],
@@ -315,6 +410,6 @@
   "timezone": "browser",
   "title": "PayFlow Operations",
   "uid": "payflow-operations",
-  "version": 1,
+  "version": 2,
   "weekStart": ""
 }
