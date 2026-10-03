@@ -3,6 +3,7 @@ using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using PayFlow.Observability;
 using PayFlow.Payment.Infrastructure.Messaging;
 using PayFlow.Payment.Infrastructure.Messaging.Kafka;
 
@@ -70,6 +71,8 @@ public sealed partial class CapturePaymentConsumerBackgroundService
                 await using var scope =
                     _scopeFactory.CreateAsyncScope();
 
+                var processed = false;
+
                 switch (messageType)
                 {
                     case CapturePaymentKafkaMessageParser.MessageType:
@@ -84,7 +87,7 @@ public sealed partial class CapturePaymentConsumerBackgroundService
                                 .GetRequiredService<
                                     CapturePaymentInboxProcessor>();
 
-                        await processor.ProcessAsync(
+                        processed = await processor.ProcessAsync(
                             consumedMessage,
                             _timeProvider.GetUtcNow(),
                             stoppingToken);
@@ -104,7 +107,7 @@ public sealed partial class CapturePaymentConsumerBackgroundService
                                 .GetRequiredService<
                                     RefundPaymentInboxProcessor>();
 
-                        await processor.ProcessAsync(
+                        processed = await processor.ProcessAsync(
                             consumedMessage,
                             _timeProvider.GetUtcNow(),
                             stoppingToken);
@@ -124,7 +127,7 @@ public sealed partial class CapturePaymentConsumerBackgroundService
                                 .GetRequiredService<
                                     ReconcilePaymentInboxProcessor>();
 
-                        await processor.ProcessAsync(
+                        processed = await processor.ProcessAsync(
                             consumedMessage,
                             _timeProvider.GetUtcNow(),
                             stoppingToken);
@@ -138,6 +141,10 @@ public sealed partial class CapturePaymentConsumerBackgroundService
                 }
 
                 consumer.Commit(result);
+
+                InboxMetrics.Record(
+                    messageType,
+                    processed);
             }
             catch (OperationCanceledException)
                 when (stoppingToken.IsCancellationRequested)
