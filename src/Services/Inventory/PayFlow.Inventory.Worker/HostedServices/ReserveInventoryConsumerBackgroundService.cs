@@ -5,6 +5,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using PayFlow.Inventory.Infrastructure.Messaging;
 using PayFlow.Inventory.Infrastructure.Messaging.Kafka;
+using PayFlow.Observability;
 
 namespace PayFlow.Inventory.Worker.HostedServices;
 
@@ -70,6 +71,8 @@ public sealed partial class ReserveInventoryConsumerBackgroundService
                 await using var scope =
                     _scopeFactory.CreateAsyncScope();
 
+                var processed = false;
+
                 switch (messageType)
                 {
                     case ReserveInventoryKafkaMessageParser.MessageType:
@@ -84,7 +87,7 @@ public sealed partial class ReserveInventoryConsumerBackgroundService
                                 .GetRequiredService<
                                     ReserveInventoryInboxProcessor>();
 
-                        await processor.ProcessAsync(
+                        processed = await processor.ProcessAsync(
                             consumedMessage,
                             _timeProvider.GetUtcNow(),
                             stoppingToken);
@@ -104,7 +107,7 @@ public sealed partial class ReserveInventoryConsumerBackgroundService
                                 .GetRequiredService<
                                     ConsumeInventoryInboxProcessor>();
 
-                        await processor.ProcessAsync(
+                        processed = await processor.ProcessAsync(
                             consumedMessage,
                             _timeProvider.GetUtcNow(),
                             stoppingToken);
@@ -124,7 +127,7 @@ public sealed partial class ReserveInventoryConsumerBackgroundService
                                 .GetRequiredService<
                                     ReleaseInventoryInboxProcessor>();
 
-                        await processor.ProcessAsync(
+                        processed = await processor.ProcessAsync(
                             consumedMessage,
                             _timeProvider.GetUtcNow(),
                             stoppingToken);
@@ -144,7 +147,7 @@ public sealed partial class ReserveInventoryConsumerBackgroundService
                                 .GetRequiredService<
                                     RestockInventoryInboxProcessor>();
 
-                        await processor.ProcessAsync(
+                        processed = await processor.ProcessAsync(
                             consumedMessage,
                             _timeProvider.GetUtcNow(),
                             stoppingToken);
@@ -158,6 +161,10 @@ public sealed partial class ReserveInventoryConsumerBackgroundService
                 }
 
                 consumer.Commit(result);
+
+                InboxMetrics.Record(
+                    messageType,
+                    processed);
             }
             catch (OperationCanceledException)
                 when (stoppingToken.IsCancellationRequested)
