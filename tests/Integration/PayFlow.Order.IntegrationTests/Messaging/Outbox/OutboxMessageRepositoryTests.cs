@@ -77,6 +77,9 @@ public sealed class OutboxMessageRepositoryTests(
     {
         var cancellationToken =
             TestContext.Current.CancellationToken;
+
+        await ClearOutboxAsync(cancellationToken);
+
         var lockedId =
             Guid.Parse("00000000-0000-0000-0000-000000000201");
         var availableId =
@@ -358,6 +361,16 @@ public sealed class OutboxMessageRepositoryTests(
                 claimToken,
                 NowUtc.AddSeconds(11),
                 cancellationToken));
+    }
+
+    private async Task ClearOutboxAsync(
+        CancellationToken cancellationToken)
+    {
+        await using var dbContext =
+            fixture.CreateDbContext();
+
+        _ = await dbContext.OutboxMessages
+            .ExecuteDeleteAsync(cancellationToken);
     }
 
     private async Task SeedAsync(
