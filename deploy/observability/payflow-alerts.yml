@@ -1,0 +1,49 @@
+groups:
+  - name: payflow-operations
+    rules:
+      - alert: PayFlowOutboxOldestMessageTooOld
+        expr: max by (service_name) ({__name__=~"payflow_outbox_oldest_pending_age(_seconds)?"}) > 120
+        for: 2m
+        labels:
+          severity: warning
+          component: outbox
+        annotations:
+          summary: "PayFlow Outbox delivery is delayed"
+          description: "The oldest unpublished Outbox message for {{ $labels.service_name }} has been pending for more than 120 seconds."
+
+      - alert: PayFlowOutboxBacklogHigh
+        expr: max by (service_name) ({__name__=~"payflow_outbox_pending_messages(_messages)?"}) > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: outbox
+        annotations:
+          summary: "PayFlow Outbox backlog is high"
+          description: "{{ $labels.service_name }} has more than 100 unpublished Outbox messages for at least 5 minutes."
+
+      - alert: PayFlowAmbiguousPaymentProviderOutcome
+        expr: sum(increase({__name__=~"payflow_payment_provider_operation(_attempt)?(_total)?", outcome="Ambiguous"}[5m])) > 0
+        labels:
+          severity: warning
+          component: payment
+        annotations:
+          summary: "Ambiguous payment provider outcome detected"
+          description: "At least one finalized provider operation had an ambiguous outcome during the last 5 minutes."
+
+      - alert: PayFlowSagaTimeoutDetected
+        expr: sum(increase({__name__=~"payflow_saga_checkout_timeout(_timeouts)?(_total)?"}[5m])) > 0
+        labels:
+          severity: warning
+          component: saga
+        annotations:
+          summary: "Checkout Saga timeout detected"
+          description: "At least one checkout Saga exceeded its deadline during the last 5 minutes."
+
+      - alert: PayFlowPaymentReconciliationRequested
+        expr: sum(increase({__name__=~"payflow_payment_reconciliation_requested(_request)?(_total)?"}[5m])) > 0
+        labels:
+          severity: warning
+          component: payment
+        annotations:
+          summary: "Payment reconciliation requested"
+          description: "At least one unique ReconcilePayment command was committed by the Payment consumer during the last 5 minutes."
