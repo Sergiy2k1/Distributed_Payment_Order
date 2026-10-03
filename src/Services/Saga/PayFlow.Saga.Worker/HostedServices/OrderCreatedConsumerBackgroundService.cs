@@ -3,6 +3,7 @@ using Confluent.Kafka;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using PayFlow.Observability;
 using PayFlow.Saga.Infrastructure.Messaging;
 using PayFlow.Saga.Infrastructure.Messaging.Kafka;
 
@@ -83,6 +84,10 @@ public sealed partial class OrderCreatedConsumerBackgroundService
                             .ConfigureAwait(false);
 
                     consumer.Commit(result);
+
+                    InboxMetrics.Record(
+                        messageType,
+                        processed);
 
                     LogMessageCommitted(
                         _logger,
