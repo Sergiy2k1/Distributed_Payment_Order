@@ -145,6 +145,16 @@ public sealed partial class CapturePaymentConsumerBackgroundService
                 InboxMetrics.Record(
                     messageType,
                     processed);
+
+                if (processed
+                    && string.Equals(
+                        messageType,
+                        ReconcilePaymentKafkaMessageParser.MessageType,
+                        StringComparison.Ordinal))
+                {
+                    PaymentBusinessMetrics
+                        .RecordReconciliationRequested();
+                }
             }
             catch (OperationCanceledException)
                 when (stoppingToken.IsCancellationRequested)

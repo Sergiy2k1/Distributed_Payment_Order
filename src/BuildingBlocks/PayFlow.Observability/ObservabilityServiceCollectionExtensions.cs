@@ -74,6 +74,7 @@ public static class ObservabilityServiceCollectionExtensions
                 metrics.AddMeter("PayFlow.Saga");
                 metrics.AddMeter(OutboxMetrics.MeterName);
                 metrics.AddMeter(InboxMetrics.MeterName);
+                metrics.AddMeter(PaymentBusinessMetrics.MeterName);
 
                 if (endpoint is null)
                 {

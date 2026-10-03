@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using PayFlow.Observability;
 using PayFlow.Payment.Application.Abstractions;
 using PayFlow.Payment.Application.Provider;
 
@@ -169,6 +170,10 @@ public sealed partial class ProviderCaptureBackgroundService
                 .ConfigureAwait(false);
         }
 
+        PaymentBusinessMetrics.RecordProviderOperation(
+            "capture",
+            result.Outcome.ToString());
+
         return true;
     }
 
@@ -257,6 +262,10 @@ public sealed partial class ProviderCaptureBackgroundService
                 cancellationToken)
                 .ConfigureAwait(false);
         }
+
+        PaymentBusinessMetrics.RecordProviderOperation(
+            "refund",
+            result.Outcome.ToString());
 
         return true;
     }
