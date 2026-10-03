@@ -1,5 +1,6 @@
 using System.Text;
 using Confluent.Kafka;
+using PayFlow.Observability;
 using PayFlow.Order.Infrastructure.Messaging;
 using PayFlow.Order.Infrastructure.Messaging.Kafka;
 
@@ -154,6 +155,10 @@ public sealed partial class OrderCommandsConsumerBackgroundService
                     }
 
                     consumer.Commit(result);
+
+                    InboxMetrics.Record(
+                        messageType,
+                        processed);
 
                     LogMessageCommitted(
                         _logger,
