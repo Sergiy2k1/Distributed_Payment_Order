@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -66,25 +65,27 @@ public sealed class OrderApiAuthenticationFactory
     protected override void ConfigureWebHost(
         IWebHostBuilder builder)
     {
-        builder.ConfigureAppConfiguration(
-            (_, configuration) =>
-            {
-                configuration.AddInMemoryCollection(
-                    new Dictionary<string, string?>
-                    {
-                        ["ConnectionStrings:OrderDatabase"] =
-                            "Host=localhost;Database=payflow_auth_tests;Username=unused;Password=unused",
-                        ["Authentication:Enabled"] = "true",
-                        ["Authentication:JwtBearer:Authority"] =
-                            "https://identity.test",
-                        ["Authentication:JwtBearer:Audience"] =
-                            "payflow-order-api",
-                        ["Authentication:JwtBearer:RequireHttpsMetadata"] =
-                            "false",
-                        ["OutboxPublisher:Enabled"] = "false",
-                        ["Kafka:BootstrapServers"] = "localhost:65535"
-                    });
-            });
+        builder.UseSetting(
+            "ConnectionStrings:OrderDatabase",
+            "Host=localhost;Database=payflow_auth_tests;Username=unused;Password=unused");
+        builder.UseSetting(
+            "Authentication:Enabled",
+            "true");
+        builder.UseSetting(
+            "Authentication:JwtBearer:Authority",
+            "https://identity.test");
+        builder.UseSetting(
+            "Authentication:JwtBearer:Audience",
+            "payflow-order-api");
+        builder.UseSetting(
+            "Authentication:JwtBearer:RequireHttpsMetadata",
+            "false");
+        builder.UseSetting(
+            "OutboxPublisher:Enabled",
+            "false");
+        builder.UseSetting(
+            "Kafka:BootstrapServers",
+            "localhost:65535");
 
         builder.ConfigureTestServices(
             services =>
