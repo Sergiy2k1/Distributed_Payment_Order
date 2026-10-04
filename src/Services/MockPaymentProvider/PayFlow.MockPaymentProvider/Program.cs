@@ -40,6 +40,12 @@ builder.Services.AddSingleton(
             "DuplicateWebhookDelay",
             TimeSpan.FromMilliseconds(100))));
 
+builder.Services.AddSingleton(
+    new MockWebhookSigningOptions(
+        providerSection.GetValue<string>(
+            "WebhookSigningSecret")
+            ?? string.Empty));
+
 var app = builder.Build();
 
 app.MapGet(

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using PayFlow.Payment.Infrastructure.Messaging.Webhooks;
 using PayFlow.Payment.Infrastructure.Persistence.Entities;
 
@@ -5,6 +6,84 @@ namespace PayFlow.Payment.Api.Webhooks;
 
 public static class ProviderWebhookEndpoints
 {
+    private const int MaximumPayloadBytes = 64 * 1024;
+
+    public static async Task<IResult> ReceiveSignedAsync(
+        HttpRequest httpRequest,
+        ProviderWebhookInboxRepository repository,
+        ProviderWebhookSigningOptions signingOptions,
+        TimeProvider timeProvider,
+        CancellationToken cancellationToken)
+    {
+        if (httpRequest.ContentLength
+            is > MaximumPayloadBytes)
+        {
+            return Results.StatusCode(
+                StatusCodes.Status413PayloadTooLarge);
+        }
+
+        await using var payloadStream =
+            new MemoryStream();
+
+        await httpRequest.Body.CopyToAsync(
+                payloadStream,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        if (payloadStream.Length > MaximumPayloadBytes)
+        {
+            return Results.StatusCode(
+                StatusCodes.Status413PayloadTooLarge);
+        }
+
+        var payload = payloadStream.ToArray();
+        var signatureHeader =
+            httpRequest.Headers[
+                ProviderWebhookSignatureVerifier.HeaderName]
+                .ToString();
+
+        if (!ProviderWebhookSignatureVerifier.IsValid(
+                payload,
+                signatureHeader,
+                signingOptions.SigningSecret))
+        {
+            return Results.Unauthorized();
+        }
+
+        ProviderWebhookRequest? request;
+
+        try
+        {
+            request = JsonSerializer.Deserialize<ProviderWebhookRequest>(
+                payload,
+                JsonSerializerOptions.Web);
+        }
+        catch (JsonException)
+        {
+            return Results.BadRequest(
+                new
+                {
+                    error = "Webhook payload is not valid JSON."
+                });
+        }
+
+        if (request is null)
+        {
+            return Results.BadRequest(
+                new
+                {
+                    error = "Webhook payload is required."
+                });
+        }
+
+        return await ReceiveAsync(
+                request,
+                repository,
+                timeProvider,
+                cancellationToken)
+            .ConfigureAwait(false);
+    }
+
     public static async Task<IResult> ReceiveAsync(
         ProviderWebhookRequest request,
         ProviderWebhookInboxRepository repository,

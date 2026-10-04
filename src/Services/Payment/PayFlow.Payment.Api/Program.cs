@@ -29,6 +29,14 @@ public sealed class Program
                 "Connection string 'PaymentDatabase' is not configured.");
         }
 
+        var signingSecret =
+            builder.Configuration.GetValue<string>(
+                "ProviderWebhook:SigningSecret");
+
+        builder.Services.AddSingleton(
+            new ProviderWebhookSigningOptions(
+                signingSecret ?? string.Empty));
+
         builder.Services.AddDbContext<PaymentDbContext>(
             options =>
                 options.UseNpgsql(
@@ -45,7 +53,7 @@ public sealed class Program
 
         app.MapPost(
             "/provider/webhooks",
-            ProviderWebhookEndpoints.ReceiveAsync);
+            ProviderWebhookEndpoints.ReceiveSignedAsync);
 
         app.Run();
     }
