@@ -11,6 +11,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
@@ -24,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../../../src/Services/Order/PayFlow.Order.Api/PayFlow.Order.Api.csproj" />
     <ProjectReference Include="../../../src/Services/Order/PayFlow.Order.Application/PayFlow.Order.Application.csproj" />
     <ProjectReference Include="../../../src/Services/Order/PayFlow.Order.Domain/PayFlow.Order.Domain.csproj" />
     <ProjectReference Include="../../../src/Services/Order/PayFlow.Order.Infrastructure/PayFlow.Order.Infrastructure.csproj" />

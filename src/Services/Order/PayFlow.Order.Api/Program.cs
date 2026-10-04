@@ -213,3 +213,5 @@ app.MapCreateOrderEndpoint(
     authenticationEnabled);
 
 app.Run();
+
+public partial class Program;
