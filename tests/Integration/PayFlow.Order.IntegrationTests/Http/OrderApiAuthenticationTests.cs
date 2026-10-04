@@ -109,16 +109,16 @@ public sealed class OrderApiAuthenticationFactory
                         options =>
                         {
                             options.DefaultScheme =
-                                TestAuthenticationHandler.Scheme;
+                                TestAuthenticationHandler.AuthenticationSchemeName;
                             options.DefaultAuthenticateScheme =
-                                TestAuthenticationHandler.Scheme;
+                                TestAuthenticationHandler.AuthenticationSchemeName;
                             options.DefaultChallengeScheme =
-                                TestAuthenticationHandler.Scheme;
+                                TestAuthenticationHandler.AuthenticationSchemeName;
                         })
                     .AddScheme<
                         AuthenticationSchemeOptions,
                         TestAuthenticationHandler>(
-                        TestAuthenticationHandler.Scheme,
+                        TestAuthenticationHandler.AuthenticationSchemeName,
                         _ => { });
             });
     }
@@ -127,7 +127,7 @@ public sealed class OrderApiAuthenticationFactory
 public sealed class TestAuthenticationHandler
     : AuthenticationHandler<AuthenticationSchemeOptions>
 {
-    public const string Scheme = "Test";
+    public const string AuthenticationSchemeName = "Test";
     public const string AuthenticatedHeader =
         "X-Test-Authenticated";
 
@@ -160,11 +160,11 @@ public sealed class TestAuthenticationHandler
                     ClaimTypes.NameIdentifier,
                     "order-api-auth-test-user")
             ],
-            Scheme);
+            AuthenticationSchemeName);
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(
             principal,
-            Scheme);
+            AuthenticationSchemeName);
 
         return Task.FromResult(
             AuthenticateResult.Success(ticket));
