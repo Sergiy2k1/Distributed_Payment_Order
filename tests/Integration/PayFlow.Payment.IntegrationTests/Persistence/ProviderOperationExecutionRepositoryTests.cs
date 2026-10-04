@@ -19,6 +19,9 @@ public sealed class ProviderOperationExecutionRepositoryTests(
     {
         var cancellationToken =
             TestContext.Current.CancellationToken;
+
+        await ClearProviderOperationsAsync(cancellationToken);
+
         var paymentId = Guid.NewGuid();
 
         await SeedAsync(
@@ -71,6 +74,9 @@ public sealed class ProviderOperationExecutionRepositoryTests(
     {
         var cancellationToken =
             TestContext.Current.CancellationToken;
+
+        await ClearProviderOperationsAsync(cancellationToken);
+
         var paymentId = Guid.NewGuid();
 
         await SeedAsync(
@@ -125,6 +131,16 @@ public sealed class ProviderOperationExecutionRepositoryTests(
                 firstKey,
                 reclaimed.ProviderIdempotencyKey);
         }
+    }
+
+    private async Task ClearProviderOperationsAsync(
+        CancellationToken cancellationToken)
+    {
+        await using var dbContext =
+            fixture.CreateDbContext();
+
+        _ = await dbContext.ProviderOperations
+            .ExecuteDeleteAsync(cancellationToken);
     }
 
     private async Task SeedAsync(
