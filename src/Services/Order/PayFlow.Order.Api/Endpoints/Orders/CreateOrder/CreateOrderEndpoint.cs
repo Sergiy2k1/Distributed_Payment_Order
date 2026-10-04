@@ -1,215 +1,96 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Confluent.Kafka;
-using Microsoft.EntityFrameworkCore;
-using PayFlow.Observability;
-using PayFlow.Order.Api.Endpoints.Orders.CreateOrder;
-using PayFlow.Order.Api.Errors;
-using PayFlow.Order.Api.HostedServices;
-using PayFlow.Order.Application.Abstractions;
-using PayFlow.Order.Application.Orders.BeginOrderProcessing;
 using PayFlow.Order.Application.Orders.CreateOrder;
-using PayFlow.Order.Application.Orders.ConfirmOrder;
-using PayFlow.Order.Application.Orders.CancelOrder;
-using PayFlow.Order.Infrastructure.Messaging;
-using PayFlow.Order.Infrastructure.Messaging.Kafka;
-using PayFlow.Order.Infrastructure.Messaging.Outbox;
-using PayFlow.Order.Infrastructure.Persistence;
-using PayFlow.Order.Infrastructure.Persistence.Repositories;
-using PayFlow.Order.Infrastructure.Time;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace PayFlow.Order.Api.Endpoints.Orders.CreateOrder;
 
-builder.Services.AddPayFlowObservability(
-    builder.Configuration,
-    "payflow-order-api",
-    includeAspNetCoreInstrumentation: true);
-
-var authenticationSection =
-    builder.Configuration.GetSection("Authentication");
-var authenticationEnabled =
-    authenticationSection.GetValue(
-        "Enabled",
-        false);
-
-if (authenticationEnabled)
+public static class CreateOrderEndpoint
 {
-    var jwtBearerSection =
-        authenticationSection.GetSection("JwtBearer");
-    var authority =
-        jwtBearerSection.GetValue<string>("Authority");
-    var audience =
-        jwtBearerSection.GetValue<string>("Audience");
-
-    if (string.IsNullOrWhiteSpace(authority))
+    public static IEndpointRouteBuilder MapCreateOrderEndpoint(
+        this IEndpointRouteBuilder endpoints,
+        bool requireAuthorization = false)
     {
-        throw new InvalidOperationException(
-            "Authentication:JwtBearer:Authority is required when authentication is enabled.");
+        var endpoint = endpoints.MapPost(
+                "/orders",
+                async (
+                    HttpContext httpContext,
+                    CreateOrderRequest request,
+                    CreateOrderHandler handler,
+                    CancellationToken cancellationToken) =>
+                {
+                    var validationErrors =
+                        CreateOrderRequestValidator.Validate(request);
+
+                    var idempotencyKeyValues =
+                        httpContext.Request.Headers["Idempotency-Key"];
+
+                    if (idempotencyKeyValues.Count > 1)
+                    {
+                        validationErrors["Idempotency-Key"] =
+                        [
+                            "Idempotency-Key must contain a single value."
+                        ];
+                    }
+
+                    var idempotencyKey =
+                        idempotencyKeyValues.Count == 0
+                            ? null
+                            : idempotencyKeyValues.ToString();
+
+                    if (idempotencyKey is not null
+                        && (string.IsNullOrWhiteSpace(idempotencyKey)
+                            || idempotencyKey.Length > 128))
+                    {
+                        validationErrors["Idempotency-Key"] =
+                        [
+                            "Idempotency-Key must be non-empty and cannot exceed 128 characters."
+                        ];
+                    }
+
+                    if (validationErrors.Count > 0)
+                    {
+                        return Results.ValidationProblem(
+                            validationErrors);
+                    }
+
+                    var command = new CreateOrderCommand(
+                        request.CustomerId,
+                        request.Items
+                            .Select(static item =>
+                                new CreateOrderItem(
+                                    item.Sku,
+                                    item.Quantity,
+                                    item.UnitPrice,
+                                    item.Currency))
+                            .ToArray());
+
+                    var result = await handler
+                        .HandleAsync(
+                            command,
+                            idempotencyKey,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+
+                    var response = new CreateOrderResponse(
+                        result.OrderId,
+                        result.Status.ToString(),
+                        result.TotalAmount,
+                        result.Currency);
+
+                    return Results.Created(
+                        $"/orders/{result.OrderId}",
+                        response);
+                })
+            .WithName("CreateOrder")
+            .Produces<CreateOrderResponse>(
+                StatusCodes.Status201Created)
+            .ProducesValidationProblem()
+            .ProducesProblem(
+                StatusCodes.Status409Conflict);
+
+        if (requireAuthorization)
+        {
+            endpoint.RequireAuthorization();
+        }
+
+        return endpoints;
     }
-
-    if (string.IsNullOrWhiteSpace(audience))
-    {
-        throw new InvalidOperationException(
-            "Authentication:JwtBearer:Audience is required when authentication is enabled.");
-    }
-
-    builder.Services
-        .AddAuthentication(
-            JwtBearerDefaults.AuthenticationScheme)
-        .AddJwtBearer(
-            options =>
-            {
-                options.Authority = authority;
-                options.Audience = audience;
-                options.RequireHttpsMetadata =
-                    jwtBearerSection.GetValue(
-                        "RequireHttpsMetadata",
-                        true);
-            });
-
-    builder.Services.AddAuthorization();
 }
-
-var orderDatabaseConnectionString =
-    builder.Configuration.GetConnectionString("OrderDatabase");
-
-if (string.IsNullOrWhiteSpace(orderDatabaseConnectionString))
-{
-    throw new InvalidOperationException(
-        "Connection string 'OrderDatabase' is not configured.");
-}
-
-var outboxPublisherSection =
-    builder.Configuration.GetSection("OutboxPublisher");
-
-var outboxPublisherOptions =
-    new OutboxPublisherOptions(
-        outboxPublisherSection.GetValue(
-            "BatchSize",
-            50),
-        outboxPublisherSection.GetValue(
-            "LeaseDuration",
-            TimeSpan.FromSeconds(30)),
-        outboxPublisherSection.GetValue(
-            "BaseRetryDelay",
-            TimeSpan.FromSeconds(5)),
-        outboxPublisherSection.GetValue(
-            "MaxRetryDelay",
-            TimeSpan.FromMinutes(1)));
-
-var outboxPublisherWorkerOptions =
-    new OutboxPublisherWorkerOptions(
-        outboxPublisherSection.GetValue(
-            "Enabled",
-            false),
-        outboxPublisherSection.GetValue(
-            "PollInterval",
-            TimeSpan.FromSeconds(1)));
-
-var kafkaSection =
-    builder.Configuration.GetSection("Kafka");
-
-var orderCommandsConsumerOptions =
-    new OrderCommandsConsumerOptions(
-        kafkaSection.GetValue<string>(
-            "BootstrapServers")
-            ?? "localhost:9092",
-        kafkaSection.GetValue<string>(
-            "OrderCommandsConsumerGroup")
-            ?? BeginOrderProcessingInboxProcessor.ConsumerName,
-        kafkaSection.GetValue(
-            "ConsumeErrorDelay",
-            TimeSpan.FromSeconds(1)));
-
-var kafkaProducerOptions =
-    new KafkaProducerOptions(
-        kafkaSection.GetValue<string>(
-            "BootstrapServers")
-            ?? "localhost:9092",
-        kafkaSection.GetValue<string>(
-            "ClientId")
-            ?? "payflow-order",
-        kafkaSection.GetValue(
-            "MessageTimeout",
-            TimeSpan.FromSeconds(10)));
-
-if (kafkaProducerOptions.MessageTimeout
-    >= outboxPublisherOptions.LeaseDuration)
-{
-    throw new InvalidOperationException(
-        "Kafka MessageTimeout must be shorter than the Outbox publisher LeaseDuration.");
-}
-
-builder.Services.AddProblemDetails();
-builder.Services.AddExceptionHandler<IdempotencyConflictExceptionHandler>();
-builder.Services.AddExceptionHandler<DomainValidationExceptionHandler>();
-
-builder.Services.AddDbContext<OrderDbContext>(
-    options => options.UseNpgsql(orderDatabaseConnectionString));
-
-builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddScoped<IOrderCommandRepository, OrderRepository>();
-builder.Services.AddScoped<
-    ICreateOrderIdempotencyRepository,
-    CreateOrderIdempotencyRepository>();
-builder.Services.AddScoped<
-    IInboxMessageRepository,
-    InboxMessageRepository>();
-builder.Services.AddScoped<IOutboxWriter, OrderOutboxWriter>();
-builder.Services.AddScoped<
-    IOrderCommandOutboxWriter,
-    OrderCommandOutboxWriter>();
-builder.Services.AddScoped<
-    ICancelOrderOutboxWriter,
-    CancelOrderOutboxWriter>();
-builder.Services.AddScoped<
-    IOutboxMessageRepository,
-    OutboxMessageRepository>();
-builder.Services.AddScoped<OutboxPublisher>();
-builder.Services.AddSingleton(outboxPublisherOptions);
-builder.Services.AddSingleton(outboxPublisherWorkerOptions);
-builder.Services.AddSingleton(orderCommandsConsumerOptions);
-builder.Services.AddSingleton(TimeProvider.System);
-builder.Services.AddSingleton(kafkaProducerOptions);
-builder.Services.AddSingleton<IProducer<string, string>>(
-    _ => new ProducerBuilder<string, string>(
-            KafkaProducerConfigFactory.Create(
-                kafkaProducerOptions))
-        .Build());
-builder.Services.AddSingleton<
-    IKafkaMessageProducer,
-    ConfluentKafkaMessageProducer>();
-builder.Services.AddSingleton<
-    IOutboxTransport,
-    KafkaOutboxTransport>();
-builder.Services.AddHostedService<OutboxPublisherBackgroundService>();
-builder.Services.AddHostedService<OrderCommandsConsumerBackgroundService>();
-builder.Services.AddScoped<IUnitOfWork, EfUnitOfWork>();
-builder.Services.AddSingleton<IClock, SystemClock>();
-builder.Services.AddScoped<CreateOrderHandler>();
-builder.Services.AddScoped<
-    IBeginOrderProcessingMessageHandler,
-    BeginOrderProcessingMessageHandler>();
-builder.Services.AddScoped<
-    IConfirmOrderMessageHandler,
-    ConfirmOrderMessageHandler>();
-builder.Services.AddScoped<
-    ICancelOrderMessageHandler,
-    CancelOrderMessageHandler>();
-builder.Services.AddScoped<BeginOrderProcessingInboxProcessor>();
-builder.Services.AddScoped<ConfirmOrderInboxProcessor>();
-builder.Services.AddScoped<CancelOrderInboxProcessor>();
-
-var app = builder.Build();
-
-app.UseExceptionHandler();
-
-if (authenticationEnabled)
-{
-    app.UseAuthentication();
-    app.UseAuthorization();
-}
-
-app.MapCreateOrderEndpoint(
-    authenticationEnabled);
-
-app.Run();
