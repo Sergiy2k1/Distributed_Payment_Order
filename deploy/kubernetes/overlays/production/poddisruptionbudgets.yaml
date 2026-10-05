@@ -1,0 +1,27 @@
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payflow-order-api
+  namespace: payflow
+  labels:
+    app.kubernetes.io/name: payflow-order-api
+    app.kubernetes.io/part-of: payflow
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payflow-order-api
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: payflow-payment-api
+  namespace: payflow
+  labels:
+    app.kubernetes.io/name: payflow-payment-api
+    app.kubernetes.io/part-of: payflow
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payflow-payment-api

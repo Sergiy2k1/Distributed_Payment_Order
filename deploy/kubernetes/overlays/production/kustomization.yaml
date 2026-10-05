@@ -1,0 +1,46 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../../base
+  - poddisruptionbudgets.yaml
+
+labels:
+  - pairs:
+      app.kubernetes.io/environment: production
+    includeSelectors: false
+
+images:
+  - name: ghcr.io/sergiy2k1/payflow-order-api
+    newTag: sha-efa0dbd83552dc404ffffc19860fcfc4f1032762
+  - name: ghcr.io/sergiy2k1/payflow-inventory-worker
+    newTag: sha-efa0dbd83552dc404ffffc19860fcfc4f1032762
+  - name: ghcr.io/sergiy2k1/payflow-payment-api
+    newTag: sha-efa0dbd83552dc404ffffc19860fcfc4f1032762
+  - name: ghcr.io/sergiy2k1/payflow-payment-worker
+    newTag: sha-efa0dbd83552dc404ffffc19860fcfc4f1032762
+  - name: ghcr.io/sergiy2k1/payflow-saga-worker
+    newTag: sha-efa0dbd83552dc404ffffc19860fcfc4f1032762
+  - name: ghcr.io/sergiy2k1/payflow-mock-payment-provider
+    newTag: sha-efa0dbd83552dc404ffffc19860fcfc4f1032762
+
+replicas:
+  - name: payflow-order-api
+    count: 2
+  - name: payflow-payment-api
+    count: 2
+  - name: payflow-inventory-worker
+    count: 1
+  - name: payflow-payment-worker
+    count: 1
+  - name: payflow-saga-worker
+    count: 1
+  - name: payflow-mock-payment-provider
+    count: 1
+
+patches:
+  - target:
+      kind: Deployment
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent
