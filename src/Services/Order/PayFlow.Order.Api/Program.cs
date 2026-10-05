@@ -275,6 +275,10 @@ if (authenticationEnabled)
     app.UseAuthorization();
 }
 
+app.MapGet(
+    "/health",
+    static () => Results.Ok(new { status = "ok" }));
+
 app.MapCreateOrderEndpoint(
     authenticationEnabled);
 

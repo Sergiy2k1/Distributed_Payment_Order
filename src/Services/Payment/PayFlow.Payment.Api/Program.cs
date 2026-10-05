@@ -109,6 +109,10 @@ public sealed class Program
 
         app.UseRateLimiter();
 
+        app.MapGet(
+            "/health",
+            static () => Results.Ok(new { status = "ok" }));
+
         app.MapPost(
                 "/provider/webhooks",
                 ProviderWebhookEndpoints.ReceiveSignedAsync)
