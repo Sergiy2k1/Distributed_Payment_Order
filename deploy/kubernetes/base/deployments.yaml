@@ -1,0 +1,257 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payflow-order-api
+  namespace: payflow
+  labels:
+    app.kubernetes.io/name: payflow-order-api
+    app.kubernetes.io/part-of: payflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payflow-order-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: payflow-order-api
+        app.kubernetes.io/part-of: payflow
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: order-api
+          image: ghcr.io/sergiy2k1/payflow-order-api:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: payflow-common
+            - configMapRef:
+                name: payflow-order-api
+            - secretRef:
+                name: payflow-order-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payflow-inventory-worker
+  namespace: payflow
+  labels:
+    app.kubernetes.io/name: payflow-inventory-worker
+    app.kubernetes.io/part-of: payflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payflow-inventory-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: payflow-inventory-worker
+        app.kubernetes.io/part-of: payflow
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: inventory-worker
+          image: ghcr.io/sergiy2k1/payflow-inventory-worker:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: payflow-common
+            - configMapRef:
+                name: payflow-inventory-worker
+            - secretRef:
+                name: payflow-inventory-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payflow-payment-api
+  namespace: payflow
+  labels:
+    app.kubernetes.io/name: payflow-payment-api
+    app.kubernetes.io/part-of: payflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payflow-payment-api
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: payflow-payment-api
+        app.kubernetes.io/part-of: payflow
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: payment-api
+          image: ghcr.io/sergiy2k1/payflow-payment-api:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: payflow-common
+            - configMapRef:
+                name: payflow-payment-api
+            - secretRef:
+                name: payflow-payment-api-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payflow-payment-worker
+  namespace: payflow
+  labels:
+    app.kubernetes.io/name: payflow-payment-worker
+    app.kubernetes.io/part-of: payflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payflow-payment-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: payflow-payment-worker
+        app.kubernetes.io/part-of: payflow
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: payment-worker
+          image: ghcr.io/sergiy2k1/payflow-payment-worker:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: payflow-common
+            - configMapRef:
+                name: payflow-payment-worker
+            - secretRef:
+                name: payflow-payment-worker-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payflow-saga-worker
+  namespace: payflow
+  labels:
+    app.kubernetes.io/name: payflow-saga-worker
+    app.kubernetes.io/part-of: payflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payflow-saga-worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: payflow-saga-worker
+        app.kubernetes.io/part-of: payflow
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: saga-worker
+          image: ghcr.io/sergiy2k1/payflow-saga-worker:latest
+          imagePullPolicy: Always
+          envFrom:
+            - configMapRef:
+                name: payflow-common
+            - configMapRef:
+                name: payflow-saga-worker
+            - secretRef:
+                name: payflow-saga-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: payflow-mock-payment-provider
+  namespace: payflow
+  labels:
+    app.kubernetes.io/name: payflow-mock-payment-provider
+    app.kubernetes.io/part-of: payflow
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: payflow-mock-payment-provider
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: payflow-mock-payment-provider
+        app.kubernetes.io/part-of: payflow
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: mock-payment-provider
+          image: ghcr.io/sergiy2k1/payflow-mock-payment-provider:latest
+          imagePullPolicy: Always
+          ports:
+            - name: http
+              containerPort: 8080
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: payflow-common
+            - configMapRef:
+                name: payflow-mock-payment-provider
+            - secretRef:
+                name: payflow-mock-payment-provider-secrets
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL

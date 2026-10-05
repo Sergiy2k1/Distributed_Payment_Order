@@ -3,5 +3,7 @@ kind: Kustomization
 resources:
   - namespace.yaml
   - configmaps.yaml
+  - deployments.yaml
+  - services.yaml
 
 # Secrets are intentionally excluded. Create them out-of-band before applying workloads.
