@@ -1,0 +1,119 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payflow-common
+  namespace: payflow
+data:
+  DOTNET_ENVIRONMENT: Production
+  Kafka__BootstrapServers: kafka.payflow-infra.svc.cluster.local:9092
+  OpenTelemetry__Enabled: "true"
+  OpenTelemetry__OtlpEndpoint: http://otel-collector.payflow-observability.svc.cluster.local:4317
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payflow-order-api
+  namespace: payflow
+data:
+  ASPNETCORE_URLS: http://+:8080
+  Authentication__Enabled: "true"
+  Authentication__JwtBearer__Audience: payflow-order-api
+  Authentication__JwtBearer__RequireHttpsMetadata: "true"
+  Kafka__ClientId: payflow-order
+  Kafka__MessageTimeout: 00:00:10
+  Kafka__OrderCommandsConsumerGroup: payflow.order.commands.v1
+  Kafka__ConsumeErrorDelay: 00:00:01
+  OutboxPublisher__Enabled: "true"
+  OutboxPublisher__PollInterval: 00:00:01
+  OutboxPublisher__BatchSize: "50"
+  OutboxPublisher__LeaseDuration: 00:00:30
+  OutboxPublisher__BaseRetryDelay: 00:00:05
+  OutboxPublisher__MaxRetryDelay: 00:01:00
+  RateLimiting__CreateOrder__PermitLimit: "30"
+  RateLimiting__CreateOrder__Window: 00:01:00
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payflow-inventory-worker
+  namespace: payflow
+data:
+  Kafka__ConsumerGroup: payflow.inventory.commands.v1
+  Kafka__ClientId: payflow-inventory
+  Kafka__ConsumeErrorDelay: 00:00:01
+  Kafka__MessageTimeout: 00:00:10
+  OutboxPublisher__Enabled: "true"
+  OutboxPublisher__PollInterval: 00:00:01
+  OutboxPublisher__BatchSize: "50"
+  OutboxPublisher__LeaseDuration: 00:00:30
+  OutboxPublisher__BaseRetryDelay: 00:00:05
+  OutboxPublisher__MaxRetryDelay: 00:01:00
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payflow-payment-api
+  namespace: payflow
+data:
+  ASPNETCORE_URLS: http://+:8080
+  RateLimiting__ProviderWebhook__PermitLimit: "120"
+  RateLimiting__ProviderWebhook__Window: 00:01:00
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payflow-payment-worker
+  namespace: payflow
+data:
+  Kafka__ConsumerGroup: payflow.payment.commands.v1
+  Kafka__ClientId: payflow-payment
+  Kafka__ConsumeErrorDelay: 00:00:01
+  Kafka__MessageTimeout: 00:00:10
+  OutboxPublisher__Enabled: "true"
+  OutboxPublisher__PollInterval: 00:00:01
+  OutboxPublisher__BatchSize: "50"
+  OutboxPublisher__LeaseDuration: 00:00:30
+  OutboxPublisher__BaseRetryDelay: 00:00:05
+  OutboxPublisher__MaxRetryDelay: 00:01:00
+  ProviderExecutor__Enabled: "true"
+  ProviderExecutor__PollInterval: 00:00:01
+  ProviderExecutor__StaleProcessingAfter: 00:02:00
+  ProviderExecutor__AmbiguousRetryDelay: 00:00:30
+  ProviderWebhookWorker__Enabled: "true"
+  ProviderWebhookWorker__PollInterval: 00:00:01
+  PaymentProvider__BaseAddress: http://payflow-mock-payment-provider:8080/
+  PaymentProvider__Timeout: 00:00:10
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payflow-saga-worker
+  namespace: payflow
+data:
+  Kafka__ClientId: payflow-saga
+  Kafka__MessageTimeout: 00:00:10
+  Kafka__OrderCreatedConsumerGroup: payflow.saga.checkout.v1
+  Kafka__ConsumeErrorDelay: 00:00:01
+  Kafka__CheckoutTimeout: 00:30:00
+  OutboxPublisher__Enabled: "true"
+  OutboxPublisher__PollInterval: 00:00:01
+  OutboxPublisher__BatchSize: "50"
+  OutboxPublisher__LeaseDuration: 00:00:30
+  OutboxPublisher__BaseRetryDelay: 00:00:05
+  OutboxPublisher__MaxRetryDelay: 00:01:00
+  SagaRecovery__Enabled: "true"
+  SagaRecovery__PollInterval: 00:00:10
+  SagaRecovery__BatchSize: "50"
+  SagaRecovery__ReconciliationRetryDelay: 00:00:30
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: payflow-mock-payment-provider
+  namespace: payflow
+data:
+  ASPNETCORE_URLS: http://+:8080
+  MockPaymentProvider__TimeoutSimulationDelay: 00:00:15
+  MockPaymentProvider__PaymentWebhookEndpoint: http://payflow-payment-api:8080/provider/webhooks
+  MockPaymentProvider__DelayedWebhookDelay: 00:00:05
+  MockPaymentProvider__DuplicateWebhookDelay: 00:00:00.100
