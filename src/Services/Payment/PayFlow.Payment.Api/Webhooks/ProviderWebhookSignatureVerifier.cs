@@ -7,6 +7,7 @@ public static class ProviderWebhookSignatureVerifier
 {
     public const string HeaderName = "X-PayFlow-Signature";
     private const string Prefix = "sha256=";
+    private const int Sha256HexLength = 64;
 
     public static bool IsValid(
         ReadOnlySpan<byte> payload,
@@ -21,14 +22,22 @@ public static class ProviderWebhookSignatureVerifier
             return false;
         }
 
-        Span<byte> providedSignature =
-            stackalloc byte[32];
+        var signatureHex =
+            signatureHeader[Prefix.Length..];
 
-        if (!Convert.TryFromHexString(
-                signatureHeader.AsSpan(Prefix.Length),
-                providedSignature,
-                out var bytesWritten)
-            || bytesWritten != providedSignature.Length)
+        if (signatureHex.Length != Sha256HexLength)
+        {
+            return false;
+        }
+
+        byte[] providedSignature;
+
+        try
+        {
+            providedSignature =
+                Convert.FromHexString(signatureHex);
+        }
+        catch (FormatException)
         {
             return false;
         }
