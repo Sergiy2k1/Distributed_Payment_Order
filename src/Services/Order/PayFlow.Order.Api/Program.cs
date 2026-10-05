@@ -1,5 +1,8 @@
+using System.Security.Claims;
+using System.Threading.RateLimiting;
 using Confluent.Kafka;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using PayFlow.Observability;
 using PayFlow.Order.Api.Endpoints.Orders.CreateOrder;
@@ -68,6 +71,63 @@ if (authenticationEnabled)
 
     builder.Services.AddAuthorization();
 }
+
+var createOrderRateLimitSection =
+    builder.Configuration.GetSection(
+        "RateLimiting:CreateOrder");
+var createOrderPermitLimit =
+    createOrderRateLimitSection.GetValue(
+        "PermitLimit",
+        30);
+var createOrderWindow =
+    createOrderRateLimitSection.GetValue(
+        "Window",
+        TimeSpan.FromMinutes(1));
+
+if (createOrderPermitLimit <= 0)
+{
+    throw new InvalidOperationException(
+        "RateLimiting:CreateOrder:PermitLimit must be greater than zero.");
+}
+
+if (createOrderWindow <= TimeSpan.Zero)
+{
+    throw new InvalidOperationException(
+        "RateLimiting:CreateOrder:Window must be greater than zero.");
+}
+
+builder.Services.AddRateLimiter(
+    options =>
+    {
+        options.RejectionStatusCode =
+            StatusCodes.Status429TooManyRequests;
+
+        options.AddPolicy(
+            CreateOrderEndpoint.RateLimitPolicyName,
+            httpContext =>
+            {
+                var subject =
+                    httpContext.User.FindFirst("sub")?.Value
+                    ?? httpContext.User.FindFirst(
+                        ClaimTypes.NameIdentifier)?.Value;
+
+                var partitionKey =
+                    !string.IsNullOrWhiteSpace(subject)
+                        ? $"user:{subject}"
+                        : $"ip:{httpContext.Connection.RemoteIpAddress?.ToString() ?? "unknown"}";
+
+                return RateLimitPartition.GetFixedWindowLimiter(
+                    partitionKey,
+                    _ =>
+                        new FixedWindowRateLimiterOptions
+                        {
+                            AutoReplenishment = true,
+                            PermitLimit = createOrderPermitLimit,
+                            QueueLimit = 0,
+                            Window = createOrderWindow
+                        });
+            });
+    });
 
 var orderDatabaseConnectionString =
     builder.Configuration.GetConnectionString("OrderDatabase");
@@ -206,6 +266,12 @@ app.UseExceptionHandler();
 if (authenticationEnabled)
 {
     app.UseAuthentication();
+}
+
+app.UseRateLimiter();
+
+if (authenticationEnabled)
+{
     app.UseAuthorization();
 }
 

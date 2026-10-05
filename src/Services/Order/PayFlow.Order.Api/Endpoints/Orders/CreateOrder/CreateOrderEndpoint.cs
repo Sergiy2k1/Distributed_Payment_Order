@@ -1,9 +1,12 @@
+using Microsoft.AspNetCore.RateLimiting;
 using PayFlow.Order.Application.Orders.CreateOrder;
 
 namespace PayFlow.Order.Api.Endpoints.Orders.CreateOrder;
 
 public static class CreateOrderEndpoint
 {
+    public const string RateLimitPolicyName = "create-order";
+
     public static IEndpointRouteBuilder MapCreateOrderEndpoint(
         this IEndpointRouteBuilder endpoints,
         bool requireAuthorization = false)
@@ -80,11 +83,14 @@ public static class CreateOrderEndpoint
                         response);
                 })
             .WithName("CreateOrder")
+            .RequireRateLimiting(RateLimitPolicyName)
             .Produces<CreateOrderResponse>(
                 StatusCodes.Status201Created)
             .ProducesValidationProblem()
             .ProducesProblem(
-                StatusCodes.Status409Conflict);
+                StatusCodes.Status409Conflict)
+            .ProducesProblem(
+                StatusCodes.Status429TooManyRequests);
 
         if (requireAuthorization)
         {
