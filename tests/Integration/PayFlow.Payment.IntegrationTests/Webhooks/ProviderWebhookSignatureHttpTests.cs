@@ -30,7 +30,7 @@ public sealed class ProviderWebhookSignatureHttpTests(
         using var request =
             CreateHttpRequest(
                 payload,
-                factory.CreateSignature(payload));
+                PaymentApiWebhookSigningFactory.CreateSignature(payload));
         using var client = factory.CreateClient();
 
         using var response =
@@ -100,7 +100,8 @@ public sealed class ProviderWebhookSignatureHttpTests(
         var originalPayload =
             Serialize(original);
         var signature =
-            factory.CreateSignature(originalPayload);
+            PaymentApiWebhookSigningFactory.CreateSignature(
+                originalPayload);
 
         var tamperedPayload =
             Serialize(
@@ -209,7 +210,7 @@ public sealed class PaymentApiWebhookSigningFactory
             SigningSecret);
     }
 
-    public string CreateSignature(
+    public static string CreateSignature(
         byte[] payload)
     {
         using var hmac =
